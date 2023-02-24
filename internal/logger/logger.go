@@ -4,7 +4,9 @@ import (
 	"log"
 
 	"github.com/robocat-ai/robocat/internal/utils"
+	"github.com/sakirsensoy/genv"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func getConfig() zap.Config {
@@ -12,24 +14,24 @@ func getConfig() zap.Config {
 
 	if utils.IsLocal() {
 		config = zap.NewDevelopmentConfig()
+		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	} else {
 		config = zap.NewProductionConfig()
 	}
 
-	if !utils.IsProduction() {
-		config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	level, err := zap.ParseAtomicLevel(
+		genv.Key("LOG_LEVEL").Default("info").String(),
+	)
+	if err == nil {
+		config.Level = level
 	}
 
 	return config
 }
 
 // Logger factory function. Returns a new instance of zap sugared logger.
-func Make(level ...zap.AtomicLevel) *zap.SugaredLogger {
+func Make() *zap.SugaredLogger {
 	c := getConfig()
-
-	if len(level) > 0 {
-		c.Level = level[0]
-	}
 
 	l, err := c.Build()
 
