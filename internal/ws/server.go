@@ -52,13 +52,12 @@ func (s *Server) reset() {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	client := r.RemoteAddr
 
-	log.Infow("Got incoming connection", "client", client)
+	log := log.With("client", client)
+
+	log.Info("Got incoming connection")
 
 	if s.active {
-		log.Debugw(
-			"There is already an active connection - request rejected",
-			"client", client,
-		)
+		log.Debug("There is already an active connection - request rejected")
 
 		w.WriteHeader(http.StatusBadRequest)
 		r.Close = true
@@ -67,10 +66,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !s.authenticateRequest(r) {
-		log.Debugw(
-			"Unable to authenticate - request rejected",
-			"client", client,
-		)
+		log.Debug("Unable to authenticate - request rejected")
 
 		w.WriteHeader(http.StatusUnauthorized)
 		r.Close = true
@@ -108,7 +104,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	close.Wait()
 
-	log.Infow("Connection closed", "client", r.RemoteAddr)
+	log.Info("Connection closed")
 }
 
 func (s *Server) ConnectionEstablished() bool {
@@ -117,7 +113,9 @@ func (s *Server) ConnectionEstablished() bool {
 
 func (s *Server) sendUpdate(update *Message) error {
 	if !s.ConnectionEstablished() {
-		return errors.New("handshake was not established yet")
+		err := errors.New("handshake was not established yet")
+		log.Error(err)
+		return err
 	}
 
 	s.updates <- update
@@ -177,11 +175,7 @@ func (s *Server) listenForCommands(
 				continue
 			}
 
-			log.Debugw(
-				"Received command",
-				"command", string(bytes),
-				"client", client,
-			)
+			log.With("command", string(bytes)).Debug("Received command")
 
 			command, err := CommandFromBytes(bytes)
 			if err != nil {
