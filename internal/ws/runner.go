@@ -12,6 +12,9 @@ type RobocatRunner struct {
 	abortScheduledCleanupSignal chan bool
 	cleanupScheduled            bool
 	input                       *RobocatInput
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func NewRobocatRunner() *RobocatRunner {
@@ -46,7 +49,7 @@ func (r *RobocatRunner) Handle(
 	ctx context.Context,
 	message *Message,
 ) {
-	runnerCtx, runnerCtxCancel := context.WithCancel(ctx)
+	r.ctx, r.cancel = context.WithCancel(ctx)
 
 	// In case of quick disconnect right after connection TagUI flow can
 	// still be running, so we try to kill previously running TagUI instance
@@ -60,7 +63,7 @@ func (r *RobocatRunner) Handle(
 	err := json.Unmarshal(message.Body, &args)
 	if err != nil {
 		message.ReplyWithErrorf("unable to deserialize body: %s", err)
-		runnerCtxCancel()
+		r.cancel()
 		return
 	}
 
@@ -71,12 +74,12 @@ func (r *RobocatRunner) Handle(
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		message.ReplyWithErrorf("unable to allocate stdout pipe: %s", err)
-		runnerCtxCancel()
+		r.cancel()
 		return
 	}
 
-	go r.watchLogs(runnerCtx, message, out)
-	go r.watchOutput(runnerCtx, message)
+	go r.watchLogs(r.ctx, message, out)
+	go r.watchOutput(r.ctx, message)
 
 	// Run command asynchrously using cmd.Run() method because it updates
 	// cmd.ProcessState upon process completion, so we can detect when
@@ -102,6 +105,10 @@ loop:
 			log.Debug("TagUI disconnected - scheduling clean-up...")
 			go r.scheduleCleanup()
 			break loop
+		case <-r.ctx.Done():
+			log.Debug("Received stop signal - stopping...")
+			go r.scheduleCleanup()
+			break loop
 		default:
 			if cmd.ProcessState != nil {
 				if cmd.ProcessState.Exited() {
@@ -112,5 +119,21 @@ loop:
 		}
 	}
 
-	runnerCtxCancel()
+	r.cancel()
+}
+
+func (r *RobocatRunner) Stop(
+	ctx context.Context,
+	message *Message,
+) {
+	if r.ctx == nil || r.ctx.Err() != nil {
+		log.Debug("TagUI run is not running - cannot stop")
+		message.ReplyWithErrorf("flow is not running - cannot stop")
+		return
+	}
+
+	log.Debug("Sending stop signal...")
+
+	r.cancel()
+	message.Reply("status", "ok")
 }
