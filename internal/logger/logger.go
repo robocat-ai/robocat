@@ -12,7 +12,10 @@ import (
 func getConfig() zap.Config {
 	var config zap.Config
 
+	defaultLogLevel := "info"
+
 	if utils.IsLocal() {
+		defaultLogLevel = "debug"
 		config = zap.NewDevelopmentConfig()
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	} else {
@@ -20,7 +23,7 @@ func getConfig() zap.Config {
 	}
 
 	level, err := zap.ParseAtomicLevel(
-		genv.Key("LOG_LEVEL").Default("info").String(),
+		genv.Key("LOG_LEVEL").Default(defaultLogLevel).String(),
 	)
 	if err == nil {
 		config.Level = level
