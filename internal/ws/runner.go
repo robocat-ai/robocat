@@ -141,7 +141,7 @@ func (r *RobocatRunner) Handle(
 		}
 	}()
 
-	log.Debugf("Running TagUI flow: %s", args.Flow)
+	log.Debugw("Running TagUI flow", "flow", args.Flow)
 
 	for {
 		select {
