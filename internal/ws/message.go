@@ -62,12 +62,6 @@ func NewUpdateWithBody(name string, body ...interface{}) (*Message, error) {
 	return message, nil
 }
 
-func NewUpdate(name string) *Message {
-	message, _ := NewUpdateWithBody(name)
-
-	return message
-}
-
 func CommandFromBytes(bytes []byte) (*Message, error) {
 	message, err := MessageFromBytes(bytes)
 	if err != nil {
