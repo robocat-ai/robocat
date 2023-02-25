@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/joho/godotenv v1.4.0
+	github.com/radovskyb/watcher v1.0.7
 	github.com/sakirsensoy/genv v1.0.1
 	go.uber.org/zap v1.24.0
 	nhooyr.io/websocket v1.8.7
