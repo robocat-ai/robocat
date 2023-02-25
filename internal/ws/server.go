@@ -113,7 +113,7 @@ func (s *Server) ConnectionEstablished() bool {
 
 func (s *Server) sendUpdate(update *Message) error {
 	if !s.ConnectionEstablished() {
-		err := errors.New("handshake was not established yet")
+		err := errors.New("connection was not established yet")
 		log.Error(err)
 		return err
 	}
