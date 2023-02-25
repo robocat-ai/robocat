@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path"
 )
@@ -23,6 +24,11 @@ func (r *RobocatInput) Handle(
 	fields, err := ParseDataFields(message)
 	if err != nil {
 		message.ReplyWithError(err)
+		return
+	}
+
+	if len(fields.Path) == 0 {
+		message.ReplyWithError(errors.New("file path must not be empty"))
 		return
 	}
 
