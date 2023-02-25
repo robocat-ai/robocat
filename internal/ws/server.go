@@ -141,6 +141,8 @@ func (s *Server) SendErrorf(format string, a ...any) error {
 }
 
 func (s *Server) processCommand(ctx context.Context, message *Message) error {
+	message.server = s
+
 	if message.Name == "ping" {
 		return s.Send("pong")
 	} else {

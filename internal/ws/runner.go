@@ -96,7 +96,7 @@ func (r *RobocatRunner) cleanup() {
 
 func (r *RobocatRunner) watchLogs(
 	ctx context.Context,
-	server *Server,
+	message *Message,
 	stream io.Reader,
 ) {
 	log.Debug("Watching logs")
@@ -110,7 +110,7 @@ loop:
 			// Stop logging when parent context is done.
 			break loop
 		default:
-			server.Send("log", scanner.Text())
+			message.Reply("log", scanner.Text())
 		}
 	}
 
@@ -119,7 +119,7 @@ loop:
 
 func (r *RobocatRunner) watchOutput(
 	ctx context.Context,
-	server *Server,
+	message *Message,
 ) {
 	flowBasePath, err := filepath.Abs("flow")
 	if err != nil {
@@ -161,7 +161,7 @@ func (r *RobocatRunner) watchOutput(
 					continue
 				}
 
-				server.Send("output", RobocatDataFields{
+				message.Reply("output", RobocatDataFields{
 					Path:     path,
 					MimeType: mimeType,
 					Payload:  payload,
@@ -195,7 +195,6 @@ func (r *RobocatRunner) watchOutput(
 
 func (r *RobocatRunner) Handle(
 	ctx context.Context,
-	server *Server,
 	message *Message,
 ) {
 	runnerCtx, runnerCtxCancel := context.WithCancel(ctx)
@@ -211,7 +210,7 @@ func (r *RobocatRunner) Handle(
 
 	err := json.Unmarshal(message.Body, &args)
 	if err != nil {
-		server.SendErrorf("unable to deserialize body: %s", err)
+		message.ReplyWithErrorf("unable to deserialize body: %s", err)
 		runnerCtxCancel()
 		return
 	}
@@ -222,13 +221,13 @@ func (r *RobocatRunner) Handle(
 
 	out, err := cmd.StdoutPipe()
 	if err != nil {
-		server.SendErrorf("unable to allocate stdout pipe: %s", err)
+		message.ReplyWithErrorf("unable to allocate stdout pipe: %s", err)
 		runnerCtxCancel()
 		return
 	}
 
-	go r.watchLogs(runnerCtx, server, out)
-	go r.watchOutput(runnerCtx, server)
+	go r.watchLogs(runnerCtx, message, out)
+	go r.watchOutput(runnerCtx, message)
 
 	// Run command asynchrously using cmd.Run() method because it updates
 	// cmd.ProcessState upon process completion, so we can detect when
@@ -236,14 +235,14 @@ func (r *RobocatRunner) Handle(
 	go func() {
 		err = cmd.Run()
 		if err != nil {
-			server.SendErrorf("unable to start TagUI: %s", err)
+			message.ReplyWithErrorf("unable to start TagUI: %s", err)
 			return
 		}
 	}()
 
 	log.Debugw("Running TagUI flow", "flow", args.Flow)
 
-	server.Send("status", "ok")
+	message.Reply("status", "ok")
 
 loop:
 	for {

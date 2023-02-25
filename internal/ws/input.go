@@ -14,7 +14,6 @@ func NewRobocatInput() *RobocatInput {
 
 func (r *RobocatInput) Handle(
 	ctx context.Context,
-	server *Server,
 	message *Message,
 ) {
 	//

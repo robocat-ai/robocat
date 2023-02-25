@@ -3,6 +3,7 @@ package ws
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 type MessageType string
@@ -13,9 +14,12 @@ const (
 )
 
 type Message struct {
+	server *Server
+
 	Type MessageType     `json:"type"`
 	Name string          `json:"name"`
 	Body json.RawMessage `json:"body,omitempty"`
+	Ref  string          `json:"ref,omitempty"`
 }
 
 func (m *Message) Bytes() ([]byte, error) {
@@ -25,6 +29,27 @@ func (m *Message) Bytes() ([]byte, error) {
 	}
 
 	return bytes, nil
+}
+func (m *Message) Reply(name string, body ...interface{}) error {
+	if m.server == nil {
+		return errors.New("message server must be set")
+	}
+
+	update, err := NewUpdateWithBody(name, body...)
+	if err != nil {
+		return err
+	}
+
+	update.Ref = m.Ref
+	return m.server.sendUpdate(update)
+}
+
+func (m *Message) ReplyWithError(err error) error {
+	return m.Reply("error", err.Error())
+}
+
+func (m *Message) ReplyWithErrorf(format string, a ...any) error {
+	return m.ReplyWithError(fmt.Errorf(format, a...))
 }
 
 func MessageFromBytes(bytes []byte) (*Message, error) {
