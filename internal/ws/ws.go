@@ -37,6 +37,7 @@ func Start(options shared.Options) {
 
 	runner := NewRobocatRunner()
 	server.On("run", runner.Handle)
+	server.On("input", runner.GetInput().Handle)
 
 	log.Infof("Listening on ws://%v", listener.Addr())
 

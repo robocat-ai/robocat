@@ -49,13 +49,21 @@ func (a *RunnerArguments) ToArray() []string {
 type RobocatRunner struct {
 	abortScheduledCleanupSignal chan bool
 	cleanupScheduled            bool
+	input                       *RobocatInput
 }
 
 func NewRobocatRunner() *RobocatRunner {
+	input := NewRobocatInput()
+
 	return &RobocatRunner{
 		abortScheduledCleanupSignal: make(chan bool),
 		cleanupScheduled:            false,
+		input:                       input,
 	}
+}
+
+func (r *RobocatRunner) GetInput() *RobocatInput {
+	return r.input
 }
 
 func (r *RobocatRunner) scheduleCleanup() {
