@@ -109,12 +109,6 @@ loop:
 	log.Debug("Stopped watching logs")
 }
 
-type DataFields struct {
-	Path     string `json:"path"`
-	MimeType string `json:"mime-type"`
-	Payload  []byte `json:"payload"`
-}
-
 func (r *RobocatRunner) watchOutput(
 	ctx context.Context,
 	server *Server,
@@ -159,7 +153,7 @@ func (r *RobocatRunner) watchOutput(
 					continue
 				}
 
-				server.Send("data", DataFields{
+				server.Send("output", RobocatDataFields{
 					Path:     path,
 					MimeType: mimeType,
 					Payload:  payload,
