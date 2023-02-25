@@ -133,12 +133,7 @@ func (s *Server) Send(name string, body ...interface{}) error {
 }
 
 func (s *Server) SendError(err error) error {
-	update, e := NewUpdateWithBody("error", err.Error())
-	if e != nil {
-		return e
-	}
-
-	return s.sendUpdate(update)
+	return s.Send("error", err.Error())
 }
 
 func (s *Server) SendErrorf(format string, a ...any) error {
