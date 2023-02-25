@@ -53,17 +53,31 @@ type RobocatRunner struct {
 }
 
 func NewRobocatRunner() *RobocatRunner {
-	input := NewRobocatInput()
-
-	return &RobocatRunner{
+	runner := &RobocatRunner{
 		abortScheduledCleanupSignal: make(chan bool),
 		cleanupScheduled:            false,
-		input:                       input,
 	}
+
+	runner.input = NewRobocatInput(runner)
+
+	return runner
 }
 
 func (r *RobocatRunner) GetInput() *RobocatInput {
 	return r.input
+}
+
+func (r *RobocatRunner) GetFlowBasePath(elem ...string) (string, error) {
+	finalPath, err := filepath.Abs("flow")
+	if err != nil {
+		return finalPath, err
+	}
+
+	for _, el := range elem {
+		finalPath = path.Join(finalPath, el)
+	}
+
+	return finalPath, nil
 }
 
 func (r *RobocatRunner) scheduleCleanup() {
@@ -121,12 +135,10 @@ func (r *RobocatRunner) watchOutput(
 	ctx context.Context,
 	message *Message,
 ) {
-	flowBasePath, err := filepath.Abs("flow")
+	outputBasePath, err := r.GetFlowBasePath("output")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	outputBasePath := path.Join(flowBasePath, "output")
 
 	w := watcher.New()
 
