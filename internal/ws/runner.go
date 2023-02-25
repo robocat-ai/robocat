@@ -115,7 +115,7 @@ type DataFields struct {
 	Payload  []byte `json:"payload"`
 }
 
-func (r *RobocatRunner) watchOutputWrites(
+func (r *RobocatRunner) watchOutput(
 	ctx context.Context,
 	server *Server,
 ) {
@@ -226,7 +226,7 @@ func (r *RobocatRunner) Handle(
 	}
 
 	go r.watchLogs(runnerCtx, server, out)
-	go r.watchOutputWrites(runnerCtx, server)
+	go r.watchOutput(runnerCtx, server)
 
 	// Run command asynchrously using cmd.Run() method because it updates
 	// cmd.ProcessState upon process completion, so we can detect when
