@@ -8,6 +8,8 @@ import (
 func (r *RobocatRunner) scheduleCleanup() {
 	r.cleanupScheduled = true
 
+	log.Debug("Clean-up scheduled")
+
 	for {
 		select {
 		case <-r.abortScheduledCleanupSignal:
