@@ -6,9 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/url"
+	"os"
 	"os/exec"
+	"path"
+	"path/filepath"
 	"time"
+
+	"github.com/radovskyb/watcher"
 )
 
 type RunnerArguments struct {
@@ -80,22 +86,109 @@ func (r *RobocatRunner) cleanup() {
 	exec.Command("kill_tagui").Run()
 }
 
-func (r *RobocatRunner) streamLogs(
+func (r *RobocatRunner) watchLogs(
 	ctx context.Context,
 	server *Server,
 	stream io.Reader,
 ) {
+	log.Debug("Watching logs")
+
 	scanner := bufio.NewScanner(stream)
 
+loop:
 	for scanner.Scan() {
 		select {
 		case <-ctx.Done():
 			// Stop logging when parent context is done.
-			return
+			break loop
 		default:
 			server.Send("log", scanner.Text())
 		}
 	}
+
+	log.Debug("Stopped watching logs")
+}
+
+type DataFields struct {
+	Path     string `json:"path"`
+	MimeType string `json:"mime-type"`
+	Payload  []byte `json:"payload"`
+}
+
+func (r *RobocatRunner) watchOutputWrites(
+	ctx context.Context,
+	server *Server,
+) {
+	flowBasePath, err := filepath.Abs("flow")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	outputBasePath := path.Join(flowBasePath, "output")
+
+	w := watcher.New()
+
+	w.FilterOps(watcher.Create, watcher.Write)
+
+	go func() {
+		for {
+			select {
+			case event := <-w.Event:
+				if event.IsDir() {
+					continue
+				}
+
+				log.Debugw("Got output update", "path", event.Path)
+
+				path, err := filepath.Rel(outputBasePath, event.Path)
+				if err != nil {
+					log.Warnw("Unable to form relative path", "error", err)
+					continue
+				}
+
+				ext := filepath.Ext(path)
+				if len(ext) == 0 {
+					ext = ".txt"
+				}
+
+				mimeType := mime.TypeByExtension(ext)
+
+				payload, err := os.ReadFile(event.Path)
+				if err != nil {
+					log.Warnw("Unable to read file", "error", err, "file", event.Path)
+					continue
+				}
+
+				server.Send("data", DataFields{
+					Path:     path,
+					MimeType: mimeType,
+					Payload:  payload,
+				})
+			case err := <-w.Error:
+				log.Fatalln(err)
+			case <-w.Closed:
+				return
+			}
+		}
+	}()
+
+	if err := w.AddRecursive(outputBasePath); err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		if err := w.Start(time.Millisecond * 100); err != nil {
+			log.Fatalln(err)
+		}
+	}()
+	defer w.Close()
+
+	log.Debug("Watching output")
+
+	// Wait until context is cancelled.
+	<-ctx.Done()
+
+	log.Debug("Stopped watching output")
 }
 
 func (r *RobocatRunner) Handle(
@@ -103,6 +196,8 @@ func (r *RobocatRunner) Handle(
 	server *Server,
 	message *Message,
 ) {
+	runnerCtx, runnerCtxCancel := context.WithCancel(ctx)
+
 	// In case of quick disconnect right after connection TagUI flow can
 	// still be running, so we try to kill previously running TagUI instance
 	// using scheduled clean-up. However, when the flow is run again we must
@@ -115,6 +210,7 @@ func (r *RobocatRunner) Handle(
 	err := json.Unmarshal(message.Body, &args)
 	if err != nil {
 		server.SendErrorf("unable to deserialize body: %s", err)
+		runnerCtxCancel()
 		return
 	}
 
@@ -125,10 +221,12 @@ func (r *RobocatRunner) Handle(
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		server.SendErrorf("unable to allocate stdout pipe: %s", err)
+		runnerCtxCancel()
 		return
 	}
 
-	go r.streamLogs(ctx, server, out)
+	go r.watchLogs(runnerCtx, server, out)
+	go r.watchOutputWrites(runnerCtx, server)
 
 	// Run command asynchrously using cmd.Run() method because it updates
 	// cmd.ProcessState upon process completion, so we can detect when
@@ -143,6 +241,9 @@ func (r *RobocatRunner) Handle(
 
 	log.Debugw("Running TagUI flow", "flow", args.Flow)
 
+	server.Send("status", "ok")
+
+loop:
 	for {
 		select {
 		// Waiting for parent (request) context to end or process state to
@@ -150,14 +251,16 @@ func (r *RobocatRunner) Handle(
 		case <-ctx.Done():
 			log.Debug("TagUI disconnected - scheduling clean-up...")
 			go r.scheduleCleanup()
-			return
+			break loop
 		default:
 			if cmd.ProcessState != nil {
 				if cmd.ProcessState.Exited() {
 					log.Debug("TagUI run finished")
-					return
+					break loop
 				}
 			}
 		}
 	}
+
+	runnerCtxCancel()
 }
