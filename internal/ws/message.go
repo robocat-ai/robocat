@@ -30,6 +30,7 @@ func (m *Message) Bytes() ([]byte, error) {
 
 	return bytes, nil
 }
+
 func (m *Message) Reply(name string, body ...interface{}) error {
 	if m.server == nil {
 		return errors.New("message server must be set")
@@ -64,10 +65,10 @@ func MessageFromBytes(bytes []byte) (*Message, error) {
 }
 
 func NewUpdateWithBody(name string, body ...interface{}) (*Message, error) {
-	message := &Message{
-		Type: "update",
-		Name: name,
-	}
+	message := &Message{}
+
+	message.Type = Update
+	message.Name = name
 
 	var actualBody interface{} = nil
 
@@ -93,7 +94,7 @@ func CommandFromBytes(bytes []byte) (*Message, error) {
 		return nil, err
 	}
 
-	if message.Type != "command" {
+	if message.Type != Command {
 		return nil, errors.New("message is not a command")
 	}
 
