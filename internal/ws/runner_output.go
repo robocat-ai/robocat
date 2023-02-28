@@ -19,6 +19,12 @@ func (r *RobocatRunner) watchOutput(
 		log.Fatal(err)
 	}
 
+	err = os.MkdirAll(outputBasePath, 0755)
+	if err != nil {
+		log.Warn(err)
+		return
+	}
+
 	w := watcher.New()
 
 	w.FilterOps(watcher.Create, watcher.Write)
