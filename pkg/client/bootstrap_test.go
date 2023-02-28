@@ -24,10 +24,10 @@ var wsServerPassword = "test"
 // var wsServerInfo testServerInfo
 
 func TestMain(m *testing.M) {
-	// pwd, err := os.Getwd()
-	// if err != nil {
-	// 	log.Fatalf("failed to get working directory: %s", err)
-	// }
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("failed to get working directory: %s", err)
+	}
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
@@ -57,11 +57,11 @@ func TestMain(m *testing.M) {
 		},
 	}, func(config *docker.HostConfig) {
 		config.AutoRemove = true
-		// config.Mounts = append(config.Mounts, docker.HostMount{
-		// Target: "/data",
-		// Source: fmt.Sprintf("%s/examples/data", pwd),
-		// Type:   "bind",
-		// })
+		config.Mounts = append(config.Mounts, docker.HostMount{
+			Target: "/home/robocat/flow",
+			Source: fmt.Sprintf("%s/test-flow", pwd),
+			Type:   "bind",
+		})
 	})
 	if err != nil {
 		log.Fatalf("Could not start resource: %s", err)
