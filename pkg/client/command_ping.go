@@ -1,8 +1,12 @@
 package robocat
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"sync"
+
+	"github.com/robocat-ai/robocat/internal/ws"
 )
 
 func (c *Client) Ping() error {
@@ -11,17 +15,26 @@ func (c *Client) Ping() error {
 		return err
 	}
 
-	msg, err := c.readUpdate()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	c.subscribe(ref, func(ctx context.Context, m *ws.Message) {
+		if m.Name != "pong" {
+			err = fmt.Errorf("unexpected update message: '%s'", m.Name)
+		}
+
+		if m.Ref != ref {
+			err = errors.New("update message reference does not match the command")
+		}
+
+		wg.Done()
+	})
+	defer c.unsubscribe(ref)
+
+	wg.Wait()
+
 	if err != nil {
 		return err
-	}
-
-	if msg.Name != "pong" {
-		return fmt.Errorf("unexpected update message: '%s'", msg.Name)
-	}
-
-	if msg.Ref != ref {
-		return errors.New("update message reference does not match the command")
 	}
 
 	return nil
