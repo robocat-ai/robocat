@@ -8,7 +8,7 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY internal ./internal
-COPY *.go .
+COPY *.go ./
 
 RUN CGO_ENABLED=0 go build -v -o main .
 
