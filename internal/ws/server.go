@@ -125,7 +125,7 @@ func (s *Server) sendUpdate(update *Message) error {
 }
 
 func (s *Server) Send(name string, body ...interface{}) error {
-	update, err := NewUpdateWithBody(name, body...)
+	update, err := newUpdate(name, body...)
 	if err != nil {
 		return err
 	}
@@ -175,7 +175,7 @@ func (s *Server) listenForCommands(
 
 			log.With("command", string(bytes)).Debug("Received command")
 
-			command, err := CommandFromBytes(bytes)
+			command, err := commandFromBytes(bytes)
 			if err != nil {
 				log.Debugf(
 					"Got error while trying to parse command '%v': %s",
