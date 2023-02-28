@@ -84,6 +84,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer c.Close(websocket.StatusInternalError, "server closed connection")
 
 	if c.Subprotocol() != "robocat" {
+		log.Info("Connection closed - client must speak the robocat subprotocol")
 		c.Close(websocket.StatusPolicyViolation, "client must speak the robocat subprotocol")
 		return
 	}
