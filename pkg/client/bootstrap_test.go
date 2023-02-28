@@ -10,6 +10,7 @@ import (
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/sakirsensoy/genv"
 	"nhooyr.io/websocket"
 )
 
@@ -40,28 +41,32 @@ func TestMain(m *testing.M) {
 
 	existing, found := pool.ContainerByName("robocat-test")
 	if found {
-		if err := pool.Purge(existing); err != nil {
+		if genv.Key("DOCKERTEST_REUSE_CONTAINER").Bool() {
+			container = existing
+		} else if err := pool.Purge(existing); err != nil {
 			log.Fatalf("Could not purge resource: %s", err)
 		}
 	}
 
-	container, err = pool.BuildAndRunWithOptions("./../../Dockerfile", &dockertest.RunOptions{
-		Name:         "robocat-test",
-		ExposedPorts: []string{"80/tcp"},
-		Env: []string{
-			fmt.Sprintf("AUTH_USERNAME=%s", wsServerUsername),
-			fmt.Sprintf("AUTH_PASSWORD=%s", wsServerPassword),
-		},
-	}, func(config *docker.HostConfig) {
-		config.AutoRemove = true
-		config.Mounts = append(config.Mounts, docker.HostMount{
-			Target: "/home/robocat/flow",
-			Source: fmt.Sprintf("%s/test-flow", pwd),
-			Type:   "bind",
+	if container == nil {
+		container, err = pool.BuildAndRunWithOptions("./../../Dockerfile", &dockertest.RunOptions{
+			Name:         "robocat-test",
+			ExposedPorts: []string{"80/tcp"},
+			Env: []string{
+				fmt.Sprintf("AUTH_USERNAME=%s", wsServerUsername),
+				fmt.Sprintf("AUTH_PASSWORD=%s", wsServerPassword),
+			},
+		}, func(config *docker.HostConfig) {
+			config.AutoRemove = true
+			config.Mounts = append(config.Mounts, docker.HostMount{
+				Target: "/home/robocat/flow",
+				Source: fmt.Sprintf("%s/test-flow", pwd),
+				Type:   "bind",
+			})
 		})
-	})
-	if err != nil {
-		log.Fatalf("Could not start resource: %s", err)
+		if err != nil {
+			log.Fatalf("Could not start resource: %s", err)
+		}
 	}
 
 	wsServerAddress = container.GetHostPort("80/tcp")
