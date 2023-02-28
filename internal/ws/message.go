@@ -31,6 +31,25 @@ func (m *Message) Bytes() ([]byte, error) {
 	return bytes, nil
 }
 
+func (m *Message) Text() (string, error) {
+	var text *string
+	err := json.Unmarshal(m.Body, &text)
+	if err != nil {
+		return "", err
+	}
+
+	return *text, nil
+}
+
+func (m *Message) MustText() string {
+	text, err := m.Text()
+	if err != nil {
+		return ""
+	}
+
+	return text
+}
+
 func (m *Message) Reply(name string, body ...interface{}) error {
 	if m.Type != Command {
 		return errors.New("message is not a command")
