@@ -10,9 +10,6 @@ import (
 type Client struct {
 	ctx  context.Context
 	conn *websocket.Conn
-
-	// updates chan *Message
-	// commands chan *Message
 }
 
 func NewClient() *Client {
