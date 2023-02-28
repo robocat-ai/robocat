@@ -37,6 +37,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Download Go modules
+        if: env.DEBUG_WORKFLOW != 'true'
+        run: go mod download && go mod verify
+
+      - name: Run tests
+        env:
+          CGO_ENABLED: 0
+        run: |
+          go test -timeout 30s ./... -covermode=atomic -coverprofile=coverage.out -failfast -short
+
       # Install the cosign tool except on PR
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
