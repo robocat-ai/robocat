@@ -22,7 +22,7 @@ env:
     IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-    build:
+    test:
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -53,6 +53,21 @@ jobs:
                   FK_SECRET_2: ${{ secrets.CI_FK_SECRET_2 }}
               run: |
                   go test -timeout 30s ./... -covermode=atomic -coverprofile=coverage.out -failfast -short
+
+    build:
+        needs:
+            - test
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+            # This is used to complete the identity challenge
+            # with sigstore/fulcio when running outside of PRs.
+            id-token: write
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v3
 
             # Install the cosign tool except on PR
             # https://github.com/sigstore/cosign-installer
