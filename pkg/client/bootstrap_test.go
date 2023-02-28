@@ -1,27 +1,22 @@
 package robocat
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 	"testing"
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"nhooyr.io/websocket"
 )
 
 var wsServerAddress string
 
 var wsServerUsername = "test"
 var wsServerPassword = "test"
-
-// type testServerInfo struct {
-// }
-
-// var wsServerInfo testServerInfo
 
 func TestMain(m *testing.M) {
 	pwd, err := os.Getwd()
@@ -41,6 +36,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to Docker: %s", err)
 	}
 
+	var container *dockertest.Resource
+
 	existing, found := pool.ContainerByName("robocat-test")
 	if found {
 		if err := pool.Purge(existing); err != nil {
@@ -48,7 +45,7 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	resource, err := pool.BuildAndRunWithOptions("./../../Dockerfile", &dockertest.RunOptions{
+	container, err = pool.BuildAndRunWithOptions("./../../Dockerfile", &dockertest.RunOptions{
 		Name:         "robocat-test",
 		ExposedPorts: []string{"80/tcp"},
 		Env: []string{
@@ -67,9 +64,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not start resource: %s", err)
 	}
 
-	wsServerAddress = resource.GetHostPort("80/tcp")
+	wsServerAddress = container.GetHostPort("80/tcp")
 
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	if err := pool.Retry(func() error {
 		u, err := url.Parse(fmt.Sprintf("http://%s", wsServerAddress))
 		if err != nil {
@@ -80,16 +76,17 @@ func TestMain(m *testing.M) {
 			u.User = url.UserPassword(wsServerUsername, wsServerPassword)
 		}
 
-		resp, err := http.Get(u.String())
+		conn, _, err := websocket.Dial(
+			context.Background(),
+			u.String(),
+			&websocket.DialOptions{
+				Subprotocols: []string{"robocat"},
+			})
 		if err != nil {
 			return err
 		}
 
-		if resp.StatusCode != 426 {
-			return errors.New("unexpected response code, expected 426")
-		}
-
-		return nil
+		return conn.Close(websocket.StatusNormalClosure, "")
 	}); err != nil {
 		log.Fatalf("Could not connect to the server: %s", err)
 	}
@@ -97,9 +94,9 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
-	if err := pool.Purge(resource); err != nil {
-		log.Fatalf("Could not purge resource: %s", err)
-	}
+	// if err := pool.Purge(container); err != nil {
+	// 	log.Fatalf("Could not purge resource: %s", err)
+	// }
 
 	os.Exit(code)
 }
