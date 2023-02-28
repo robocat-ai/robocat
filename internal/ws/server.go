@@ -145,7 +145,7 @@ func (s *Server) processCommand(ctx context.Context, message *Message) error {
 	message.server = s
 
 	if message.Name == "ping" {
-		return s.Send("pong")
+		return message.Reply("pong")
 	} else {
 		s.broadcastEvent(ctx, message.Name, message)
 	}
