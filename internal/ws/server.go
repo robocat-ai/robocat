@@ -19,12 +19,12 @@ type Server struct {
 	updates  chan *Message
 	commands chan *Message
 
-	registeredCallbacks map[string]RobocatCallback
+	registeredCallbacks map[string]CommandCallback
 }
 
 func NewServer() *Server {
 	server := &Server{
-		registeredCallbacks: make(map[string]RobocatCallback),
+		registeredCallbacks: make(map[string]CommandCallback),
 	}
 
 	return server
@@ -115,7 +115,6 @@ func (s *Server) ConnectionEstablished() bool {
 func (s *Server) sendUpdate(update *Message) error {
 	if !s.ConnectionEstablished() {
 		err := errors.New("connection was not established yet")
-		log.Error(err)
 		return err
 	}
 

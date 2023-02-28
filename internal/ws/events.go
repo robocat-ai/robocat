@@ -2,9 +2,9 @@ package ws
 
 import "context"
 
-type RobocatCallback func(context.Context, *Message)
+type CommandCallback func(context.Context, *Message)
 
-func (s *Server) On(name string, callback RobocatCallback) {
+func (s *Server) On(name string, callback CommandCallback) {
 	s.registeredCallbacks[name] = callback
 }
 
