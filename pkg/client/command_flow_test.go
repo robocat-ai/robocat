@@ -16,15 +16,13 @@ func TestFlowCommand(t *testing.T) {
 	flow := client.Flow("01-example-com").WithTimeout(15 * time.Second).Run()
 	assert.NoError(t, flow.Err())
 
-	defer flow.Close()
-
-	logger := flow.Log()
-
 	go func() {
+		log := flow.Log()
+
 		for {
-			line, err := logger.Next()
-			if err != nil {
-				continue
+			line, ok := <-log.Channel()
+			if !ok {
+				break
 			}
 
 			t.Log(line)
@@ -41,7 +39,6 @@ func TestMissingFlow(t *testing.T) {
 
 	flow := client.Flow("missing-flow").Run()
 	assert.NoError(t, flow.Err())
-	defer flow.Close()
 
 	err := flow.Wait()
 	assert.ErrorContains(t, err, "cannot find missing-flow")
