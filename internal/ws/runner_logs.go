@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"strings"
 )
 
 func (r *RobocatRunner) watchLogs(
@@ -15,6 +16,8 @@ func (r *RobocatRunner) watchLogs(
 
 	scanner := bufio.NewScanner(stream)
 
+	errorPrefix := "ERROR - "
+
 loop:
 	for scanner.Scan() {
 		select {
@@ -22,7 +25,17 @@ loop:
 			// Stop logging when parent context is done.
 			break loop
 		default:
-			message.Reply("log", scanner.Text())
+			line := scanner.Text()
+			if strings.HasPrefix(line, errorPrefix) {
+				r.cancel()
+				message.ReplyWithErrorf(
+					"got error during run execution: %s",
+					strings.TrimPrefix(line, errorPrefix),
+				)
+				break loop
+			} else {
+				message.Reply("log", scanner.Text())
+			}
 		}
 	}
 
