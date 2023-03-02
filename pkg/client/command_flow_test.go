@@ -11,7 +11,7 @@ func TestFlowCommand(t *testing.T) {
 	client := newTestClient(t)
 	defer client.Close()
 
-	// client.DebugLogger(log.Println)
+	// client.DebugLogger(t.Log)
 
 	flow := client.Flow("01-example-com").WithTimeout(15 * time.Second).Run()
 	assert.NoError(t, flow.Err())
@@ -36,6 +36,8 @@ func TestFlowCommand(t *testing.T) {
 func TestMissingFlow(t *testing.T) {
 	client := newTestClient(t)
 	defer client.Close()
+
+	// client.DebugLogger(t.Log)
 
 	flow := client.Flow("missing-flow").Run()
 	assert.NoError(t, flow.Err())
