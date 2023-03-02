@@ -3,8 +3,6 @@ package robocat
 import (
 	"context"
 	"fmt"
-	"log"
-	"strings"
 
 	"github.com/robocat-ai/robocat/internal/ws"
 )
