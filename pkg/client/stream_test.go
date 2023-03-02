@@ -17,17 +17,10 @@ func TestRobocatStream(t *testing.T) {
 	stream := &RobocatStream[string]{}
 	defer stream.Close()
 
-	go func() {
-		for {
-			item, ok := <-stream.Channel()
-			if !ok {
-				break
-			}
-
-			t.Log(item)
-			wg.Done()
-		}
-	}()
+	go stream.Watch(func(item string) {
+		t.Log(item)
+		wg.Done()
+	})
 
 	go func() {
 		for i := 1; i <= items; i++ {

@@ -32,6 +32,17 @@ func (s *RobocatStream[T]) Push(item T) error {
 	return nil
 }
 
+func (s *RobocatStream[T]) Watch(callback func(item T)) {
+	for {
+		item, ok := <-s.Channel()
+		if !ok {
+			break
+		}
+
+		callback(item)
+	}
+}
+
 // Get read-only channel with stream items.
 func (s *RobocatStream[T]) Channel() <-chan T {
 	return s.ensureChannel()
