@@ -2,6 +2,7 @@ package robocat
 
 import (
 	"bytes"
+	"fmt"
 	"image/png"
 	"testing"
 	"time"
@@ -28,6 +29,11 @@ func TestFlowCommand(t *testing.T) {
 	go flow.Output().Watch(func(file *ws.RobocatFile) {
 		if file.Kind() == "text" {
 			t.Logf("Client received TEXT: %s", file.Text())
+			if file.Text() != "Example Domain" {
+				outputError = fmt.Errorf("expected 'Example Domain', got '%s'", file.Text())
+				return
+			}
+
 		} else if file.Kind() == "image" {
 			buffer := bytes.NewBuffer(nil)
 			image, format, err := file.Image()
