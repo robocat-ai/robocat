@@ -1,6 +1,7 @@
 package robocat
 
 import (
+	"log"
 	"testing"
 	"time"
 
@@ -15,6 +16,19 @@ func TestFlowCommand(t *testing.T) {
 	assert.NoError(t, flow.Err())
 
 	defer flow.Close()
+
+	logger := flow.Log()
+
+	go func() {
+		for {
+			line, err := logger.Next()
+			if err != nil {
+				continue
+			}
+
+			log.Println(line)
+		}
+	}()
 
 	err := flow.Wait()
 	assert.NoError(t, err)

@@ -14,11 +14,14 @@ type RobocatFlow struct {
 	ref    string
 	ctx    context.Context
 	err    error
+
+	log    *RobocatLog
 }
 
 func (chain *FlowCommandChain) Run() *RobocatFlow {
 	flow := &RobocatFlow{
 		client: chain.client,
+		log:    &RobocatLog{},
 	}
 
 	ref, err := chain.client.sendCommand("run", chain.args)
@@ -38,23 +41,15 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 				cancel()
 			}
 		} else if m.Name == "log" {
-			// Redirect log
-
-			if strings.HasPrefix(m.MustText(), "ERROR - ") {
-				flow.err = fmt.Errorf("got error log: %v", m.MustText())
-				cancel()
-			}
+			flow.log.Append(m.MustText())
 		} else if m.Name == "error" {
 			flow.err = fmt.Errorf("got error during flow execution: %v", m.MustText())
 			cancel()
 		} else if m.Name == "output" {
-			file, err := ws.ParseFile(m)
 			if err != nil {
 				flow.err = err
 				cancel()
 			}
-
-			log.Println("output:", file.Path, file.MimeType, len(file.Payload))
 		}
 	})
 
@@ -95,4 +90,8 @@ func (f *RobocatFlow) Wait() error {
 	f.Close()
 
 	return f.Err()
+}
+
+func (f *RobocatFlow) Log() *RobocatLog {
+	return f.log
 }
