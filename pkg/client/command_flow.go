@@ -2,7 +2,7 @@ package robocat
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -51,10 +51,12 @@ func (chain *FlowCommandChain) WithTimeout(timeout time.Duration) *FlowCommandCh
 	return chain
 }
 
-// Pops the oldest error from the channel and returns it.
-// Returns nil if there was no error.
 func (f *RobocatFlow) Err() error {
-	return f.err
+	if f.err != nil {
+		return f.err
+	}
+
+	return f.client.err
 }
 
 func (f *RobocatFlow) Close() {
@@ -65,19 +67,20 @@ func (f *RobocatFlow) Done() <-chan struct{} {
 	return f.ctx.Done()
 }
 
-func (f *RobocatFlow) Wait() {
+func (f *RobocatFlow) Wait() error {
 	for range f.Done() {
 		// Wait for context to finish.
 	}
+
+	f.Close()
+
+	return f.Err()
 }
 
 func (chain *FlowCommandChain) Run() *RobocatFlow {
 	flow := &RobocatFlow{
 		client: chain.client,
-		// err: make(chan error),
 	}
-
-	// log.Println(chain.args)
 
 	ref, err := chain.client.sendCommand("run", chain.args)
 	if err != nil {
@@ -85,49 +88,42 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 		return flow
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), chain.timeout)
+	ctx, cancel := context.WithTimeout(chain.client.ctx, chain.timeout)
 
 	flow.ref = ref
 	flow.ctx = ctx
 
 	chain.client.subscribe(flow.ref, func(ctx context.Context, m *ws.Message) {
-		if m.Name == "status" && m.MustText() == "ok" {
-			//
-		} else if m.Name == "log" {
+		if m.Name == "log" {
 			// Redirect log
 
-			if strings.Contains(strings.ToLower(m.MustText()), "error") {
-				flow.err = errors.New("got error log")
+			if strings.HasPrefix(m.MustText(), "ERROR - ") {
+				flow.err = fmt.Errorf("got error log: %v", m.MustText())
+				cancel()
+			}
+		} else if m.Name == "error" {
+			flow.err = fmt.Errorf("got error during flow execution: %v", m.MustText())
+			cancel()
+		} else if m.Name == "output" {
+			file, err := ws.ParseFile(m)
+			if err != nil {
+				flow.err = err
 				cancel()
 			}
 
-			log.Println(flow, m.MustText())
+			log.Println("output:", file.Path, file.MimeType, len(file.Payload))
 		}
 	})
 
 	go func() {
 		for range ctx.Done() {
+			//
 		}
-
-		log.Println(ctx.Err())
 
 		if ctx.Err() == context.DeadlineExceeded {
 			flow.err = context.DeadlineExceeded
 		}
 	}()
-
-	// time.Sleep(time.Second * 5)
-
-	// loop:
-	// 	for {
-	// 		select {
-	// 		case <-time.After(time.Second * 5):
-	// 			break loop
-	// 		default:
-	// 			msg, err := chain.client.readUpdate()
-	// 			log.Println(msg, err)
-	// 		}
-	// 	}
 
 	return flow
 }
