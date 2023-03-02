@@ -1,9 +1,12 @@
 package robocat
 
 import (
+	"bytes"
+	"image/png"
 	"testing"
 	"time"
 
+	"github.com/robocat-ai/robocat/internal/ws"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,8 +23,32 @@ func TestFlowCommand(t *testing.T) {
 		t.Log(line)
 	})
 
+	var outputError error
+
+	go flow.Output().Watch(func(file *ws.RobocatFile) {
+		if file.Kind() == "text" {
+			t.Logf("Client received TEXT: %s", file.Text())
+		} else if file.Kind() == "image" {
+			buffer := bytes.NewBuffer(nil)
+			image, format, err := file.Image()
+			if err != nil {
+				outputError = err
+				return
+			}
+
+			err = png.Encode(buffer, image)
+			if err != nil {
+				outputError = err
+				return
+			}
+
+			t.Logf("Client received IMAGE (%s): %s", format, file.Path)
+		}
+	})
+
 	err := flow.Wait()
 	assert.NoError(t, err)
+	assert.NoError(t, outputError)
 }
 
 func TestMissingFlow(t *testing.T) {
