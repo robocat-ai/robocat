@@ -14,6 +14,8 @@ type Client struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
+	logger func(args ...any)
+
 	conn *websocket.Conn
 	err  error
 
@@ -31,6 +33,16 @@ func NewClient() *Client {
 	}
 
 	return client
+}
+
+func (c *Client) log(args ...any) {
+	if c.logger != nil {
+		c.logger(args)
+	}
+}
+
+func (c *Client) DebugLogger(logger func(args ...any)) {
+	c.logger = logger
 }
 
 func (c *Client) Connect(u string, credentials ...Credentials) error {
