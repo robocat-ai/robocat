@@ -21,9 +21,7 @@ func (c *Client) Ping() error {
 	c.subscribe(ref, func(ctx context.Context, m *ws.Message) {
 		if m.Name != "pong" {
 			err = fmt.Errorf("unexpected update message: '%s'", m.Name)
-		}
-
-		if m.Ref != ref {
+		} else if m.Ref != ref {
 			err = errors.New("update message reference does not match the command")
 		}
 
