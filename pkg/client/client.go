@@ -20,6 +20,8 @@ type Client struct {
 	err  error
 
 	registeredCallbacks map[string][]UpdateCallback
+
+	cancelFlow chan struct{}
 }
 
 func NewClient() *Client {
@@ -30,6 +32,8 @@ func NewClient() *Client {
 		ctxCancel: cancel,
 
 		registeredCallbacks: make(map[string][]UpdateCallback),
+
+		cancelFlow: make(chan struct{}),
 	}
 
 	return client
@@ -107,4 +111,10 @@ func (c *Client) listenForUpdates() {
 			c.broadcastEvent(c.ctx, message)
 		}
 	}
+}
+
+// CancelFlow returns a channel that's closed
+// when child flow of this client should be canceled.
+func (c *Client) CancelFlow() <-chan struct{} {
+	return c.cancelFlow
 }

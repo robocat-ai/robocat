@@ -2,7 +2,7 @@ package robocat
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/robocat-ai/robocat/internal/ws"
 )
@@ -57,15 +57,21 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 	})
 
 	go func() {
-		for range ctx.Done() {
-			//
-		}
+		defer flow.Close()
+		defer cancel()
 
+		for {
+			select {
+			case <-ctx.Done():
 		if ctx.Err() == context.DeadlineExceeded {
 			flow.err = context.DeadlineExceeded
 		}
-
-		flow.Close()
+				return
+			case <-chain.client.CancelFlow():
+				flow.err = errors.New("flow was aborted")
+				return
+			}
+		}
 	}()
 
 	return flow
