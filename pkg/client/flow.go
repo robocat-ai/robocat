@@ -63,9 +63,9 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 		for {
 			select {
 			case <-ctx.Done():
-		if ctx.Err() == context.DeadlineExceeded {
-			flow.err = context.DeadlineExceeded
-		}
+				if ctx.Err() == context.DeadlineExceeded {
+					flow.err = context.DeadlineExceeded
+				}
 				return
 			case <-chain.client.CancelFlow():
 				flow.err = errors.New("flow was aborted")
