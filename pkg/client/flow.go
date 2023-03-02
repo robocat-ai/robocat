@@ -59,6 +59,8 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 		if ctx.Err() == context.DeadlineExceeded {
 			flow.err = context.DeadlineExceeded
 		}
+
+        flow.Close()
 	}()
 
 	return flow
@@ -74,6 +76,7 @@ func (f *RobocatFlow) Err() error {
 
 func (f *RobocatFlow) Close() {
 	f.client.unsubscribe(f.ref)
+	f.log.Close()
 }
 
 func (f *RobocatFlow) Done() <-chan struct{} {
@@ -84,8 +87,6 @@ func (f *RobocatFlow) Wait() error {
 	for range f.Done() {
 		// Wait for context to finish.
 	}
-
-	f.Close()
 
 	return f.Err()
 }
