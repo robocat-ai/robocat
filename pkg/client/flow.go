@@ -13,13 +13,13 @@ type RobocatFlow struct {
 	ctx    context.Context
 	err    error
 
-	log    *RobocatLog
+	log    *RobocatLogStream
 }
 
 func (chain *FlowCommandChain) Run() *RobocatFlow {
 	flow := &RobocatFlow{
 		client: chain.client,
-		log:    &RobocatLog{},
+		log:    &RobocatLogStream{},
 	}
 
 	ref, err := chain.client.sendCommand("run", chain.args)
@@ -39,7 +39,7 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 				cancel()
 			}
 		} else if m.Name == "log" {
-			flow.log.append(m.MustText())
+			flow.log.put(m.MustText())
 		} else if m.Name == "error" {
 			flow.err = errors.New(m.MustText())
 			cancel()
@@ -91,6 +91,6 @@ func (f *RobocatFlow) Wait() error {
 	return f.Err()
 }
 
-func (f *RobocatFlow) Log() *RobocatLog {
+func (f *RobocatFlow) Log() *RobocatLogStream {
 	return f.log
 }
