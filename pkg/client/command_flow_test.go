@@ -1,7 +1,6 @@
 package robocat
 
 import (
-	"log"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ func TestFlowCommand(t *testing.T) {
 				continue
 			}
 
-			log.Println(line)
+			t.Log(line)
 		}
 	}()
 
