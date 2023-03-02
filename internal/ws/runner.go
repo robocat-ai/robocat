@@ -113,6 +113,7 @@ loop:
 			if cmd.ProcessState != nil {
 				if cmd.ProcessState.Exited() {
 					log.Debug("TagUI run finished")
+					message.Reply("status", "success")
 					break loop
 				}
 			}
