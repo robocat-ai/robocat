@@ -23,7 +23,7 @@ func TestClientConnect(t *testing.T) {
 	defer client.Close()
 
 	go func() {
-		time.Sleep(time.Hour)
+		time.Sleep(time.Minute)
 		client.Close()
 	}()
 }
