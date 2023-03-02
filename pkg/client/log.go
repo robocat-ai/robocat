@@ -7,10 +7,15 @@ type RobocatLog struct {
 	lines  []string
 }
 
-func (l *RobocatLog) Append(line string) {
+// Append a new line to the log stream.
+// This method is used internally by the RobocatFlow to append lines
+// to the stream.
+func (l *RobocatLog) append(line string) {
 	l.lines = append(l.lines, line)
 }
 
+// Try to get next line from the log stream.
+// If there are no new lines - returns an error.
 func (l *RobocatLog) Next() (line string, err error) {
 	if len(l.lines) > l.cursor {
 		line = l.lines[l.cursor]
