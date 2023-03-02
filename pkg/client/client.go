@@ -71,7 +71,6 @@ func (c *Client) listenForUpdates() {
 	for {
 		select {
 		case <-c.ctx.Done():
-			log.Printf("Stopped listening for updates")
 			return
 		default:
 			msg, err := c.readUpdate()
