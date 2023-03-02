@@ -20,7 +20,7 @@ func (s *RobocatStream[T]) ensureChannel() chan T {
 }
 
 // Append a new item to the stream.
-func (s *RobocatStream[T]) put(item T) error {
+func (s *RobocatStream[T]) Push(item T) error {
 	if s.closed {
 		return errors.New("stream channel is closed")
 	}

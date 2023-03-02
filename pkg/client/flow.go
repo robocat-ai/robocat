@@ -39,7 +39,7 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 				cancel()
 			}
 		} else if m.Name == "log" {
-			flow.log.put(m.MustText())
+			flow.log.Push(m.MustText())
 		} else if m.Name == "error" {
 			flow.err = errors.New(m.MustText())
 			cancel()
