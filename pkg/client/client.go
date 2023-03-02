@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/url"
 
+	"github.com/docker/go-units"
+	"github.com/sakirsensoy/genv"
 	"nhooyr.io/websocket"
 )
 
@@ -13,6 +15,7 @@ type Client struct {
 	ctxCancel context.CancelFunc
 
 	conn *websocket.Conn
+	err  error
 
 	registeredCallbacks map[string][]UpdateCallback
 }
@@ -31,18 +34,18 @@ func NewClient() *Client {
 }
 
 func (c *Client) Connect(u string, credentials ...Credentials) error {
-	ur, err := url.Parse(u)
+	url, err := url.Parse(u)
 	if err != nil {
 		return err
 	}
 
 	if len(credentials) > 0 {
-		ur.User = credentials[0].GetUserInfo()
+		url.User = credentials[0].GetUserInfo()
 	}
 
 	conn, _, err := websocket.Dial(
 		c.ctx,
-		ur.String(),
+		url.String(),
 		&websocket.DialOptions{
 			Subprotocols: []string{"robocat"},
 		},
@@ -52,6 +55,15 @@ func (c *Client) Connect(u string, credentials ...Credentials) error {
 	}
 
 	c.conn = conn
+
+	size, err := units.FromHumanSize(
+		genv.Key("MAX_READ_SIZE").Default("1M").String(),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	c.conn.SetReadLimit(size)
 
 	go c.listenForUpdates()
 
@@ -73,12 +85,14 @@ func (c *Client) listenForUpdates() {
 		case <-c.ctx.Done():
 			return
 		default:
-			msg, err := c.readUpdate()
+			message, err := c.readUpdate()
 			if err != nil {
+				c.err = err
+				c.Close()
 				continue
 			}
 
-			c.broadcastEvent(c.ctx, msg)
+			c.broadcastEvent(c.ctx, message)
 		}
 	}
 }
