@@ -31,7 +31,7 @@ func TestRobocatStream(t *testing.T) {
 
 	go func() {
 		for i := 1; i <= items; i++ {
-			stream.put(fmt.Sprintf("item %d", i))
+			stream.Push(fmt.Sprintf("item %d", i))
 			wg.Done()
 		}
 	}()
@@ -50,7 +50,7 @@ func TestStreamClose(t *testing.T) {
 	var err error
 
 	go func() {
-		err = stream.put("")
+		err = stream.Push("")
 		wg.Done()
 	}()
 
