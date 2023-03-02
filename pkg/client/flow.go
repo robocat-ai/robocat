@@ -33,7 +33,11 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 	flow.ctx = ctx
 
 	chain.client.subscribe(flow.ref, func(ctx context.Context, m *ws.Message) {
-		if m.Name == "log" {
+		if m.Name == "status" {
+			if m.MustText() == "success" {
+				cancel()
+			}
+		} else if m.Name == "log" {
 			// Redirect log
 
 			if strings.HasPrefix(m.MustText(), "ERROR - ") {
