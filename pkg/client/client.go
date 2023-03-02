@@ -37,7 +37,7 @@ func NewClient() *Client {
 
 func (c *Client) log(args ...any) {
 	if c.logger != nil {
-		c.logger(args)
+		c.logger(args...)
 	}
 }
 
