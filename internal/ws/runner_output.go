@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"bytes"
 	"context"
 	"mime"
 	"os"
@@ -56,6 +57,10 @@ func (r *RobocatRunner) watchOutput(
 				if err != nil {
 					log.Warnw("Unable to read file", "error", err, "file", event.Path)
 					continue
+				}
+
+				if ext == ".txt" {
+					payload = bytes.TrimSpace(payload)
 				}
 
 				message.Reply("output", RobocatFile{
