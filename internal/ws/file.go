@@ -11,7 +11,7 @@ type RobocatFile struct {
 	Payload  []byte `json:"payload"`
 }
 
-func ParseFile(m *Message) (*RobocatFile, error) {
+func ParseFileFromMessage(m *Message) (*RobocatFile, error) {
 	var fields *RobocatFile
 	err := json.Unmarshal(m.Body, &fields)
 	if err != nil {
