@@ -21,7 +21,7 @@ func (r *RobocatInput) Handle(
 	ctx context.Context,
 	message *Message,
 ) {
-	fields, err := ParseDataFields(message)
+	fields, err := ParseFile(message)
 	if err != nil {
 		message.ReplyWithError(err)
 		return

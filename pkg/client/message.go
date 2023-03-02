@@ -2,6 +2,7 @@ package robocat
 
 import (
 	"errors"
+	"log"
 
 	"github.com/oklog/ulid/v2"
 	"github.com/robocat-ai/robocat/internal/ws"
@@ -21,12 +22,14 @@ func newCommand(name string, body ...interface{}) (*ws.Message, error) {
 }
 
 func (c *Client) sendCommand(name string, body ...interface{}) (string, error) {
-	msg, err := newCommand(name, body)
+	message, err := newCommand(name, body...)
 	if err != nil {
 		return "", err
 	}
 
-	bytes, err := msg.Bytes()
+	log.Println("-> send:", message.Ref, message.Name, message.MustText())
+
+	bytes, err := message.Bytes()
 	if err != nil {
 		return "", err
 	}
@@ -36,7 +39,7 @@ func (c *Client) sendCommand(name string, body ...interface{}) (string, error) {
 		return "", err
 	}
 
-	return msg.Ref, nil
+	return message.Ref, nil
 }
 
 func updateFromBytes(bytes []byte) (*ws.Message, error) {

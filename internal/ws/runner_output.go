@@ -58,7 +58,7 @@ func (r *RobocatRunner) watchOutput(
 					continue
 				}
 
-				message.Reply("output", RobocatDataFields{
+				message.Reply("output", RobocatFile{
 					Path:     path,
 					MimeType: mimeType,
 					Payload:  payload,

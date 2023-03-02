@@ -1,7 +1,6 @@
 package robocat
 
 import (
-	"log"
 	"testing"
 	"time"
 
@@ -12,12 +11,11 @@ func TestFlowCommand(t *testing.T) {
 	client := newTestClient(t)
 	defer client.Close()
 
-	flow := client.Flow("test").WithTimeout(5 * time.Second).Run()
+	flow := client.Flow("01-example-com").WithTimeout(15 * time.Second).Run()
 	assert.NoError(t, flow.Err())
 
 	defer flow.Close()
 
-	flow.Wait()
-
-	log.Println(flow.Err())
+	err := flow.Wait()
+	assert.NoError(t, err)
 }
