@@ -2,7 +2,6 @@ package robocat
 
 import (
 	"context"
-	"log"
 
 	"github.com/robocat-ai/robocat/internal/ws"
 )
@@ -23,7 +22,7 @@ func (c *Client) unsubscribe(ref string) {
 }
 
 func (c *Client) broadcastEvent(ctx context.Context, message *ws.Message) {
-	log.Println("<- recv:", message.Ref, message.Name, message.MustText())
+	c.log("<- recv:", message.Ref, message.Name, message.MustText())
 
 	callbacks, ok := c.registeredCallbacks[message.Ref]
 	if ok {

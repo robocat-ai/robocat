@@ -2,7 +2,6 @@ package robocat
 
 import (
 	"errors"
-	"log"
 
 	"github.com/oklog/ulid/v2"
 	"github.com/robocat-ai/robocat/internal/ws"
@@ -27,7 +26,7 @@ func (c *Client) sendCommand(name string, body ...interface{}) (string, error) {
 		return "", err
 	}
 
-	log.Println("-> send:", message.Ref, message.Name, message.MustText())
+	c.log("-> send:", message.Ref, message.Name, message.MustText())
 
 	bytes, err := message.Bytes()
 	if err != nil {

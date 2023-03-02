@@ -12,6 +12,8 @@ func TestFlowCommand(t *testing.T) {
 	client := newTestClient(t)
 	defer client.Close()
 
+	// client.DebugLogger(log.Println)
+
 	flow := client.Flow("01-example-com").WithTimeout(15 * time.Second).Run()
 	assert.NoError(t, flow.Err())
 
