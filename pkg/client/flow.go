@@ -41,7 +41,7 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 		} else if m.Name == "log" {
 			flow.log.Append(m.MustText())
 		} else if m.Name == "error" {
-			flow.err = fmt.Errorf("got error during flow execution: %v", m.MustText())
+			flow.err = errors.New(m.MustText())
 			cancel()
 		} else if m.Name == "output" {
 			if err != nil {

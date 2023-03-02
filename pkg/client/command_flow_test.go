@@ -34,3 +34,15 @@ func TestFlowCommand(t *testing.T) {
 	err := flow.Wait()
 	assert.NoError(t, err)
 }
+
+func TestMissingFlow(t *testing.T) {
+	client := newTestClient(t)
+	defer client.Close()
+
+	flow := client.Flow("missing-flow").Run()
+	assert.NoError(t, flow.Err())
+	defer flow.Close()
+
+	err := flow.Wait()
+	assert.ErrorContains(t, err, "cannot find missing-flow")
+}
