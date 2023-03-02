@@ -60,7 +60,7 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 			flow.err = context.DeadlineExceeded
 		}
 
-        flow.Close()
+		flow.Close()
 	}()
 
 	return flow
