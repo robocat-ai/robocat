@@ -14,12 +14,14 @@ type RobocatFlow struct {
 	err    error
 
 	log    *RobocatLogStream
+	output *RobocatOutputStream
 }
 
 func (chain *FlowCommandChain) Run() *RobocatFlow {
 	flow := &RobocatFlow{
 		client: chain.client,
 		log:    &RobocatLogStream{},
+		output: &RobocatOutputStream{},
 	}
 
 	ref, err := chain.client.sendCommand("run", chain.args)
@@ -44,10 +46,13 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 			flow.err = errors.New(m.MustText())
 			cancel()
 		} else if m.Name == "output" {
+			file, err := ws.ParseFileFromMessage(m)
 			if err != nil {
 				flow.err = err
 				cancel()
 			}
+
+			flow.output.Push(file)
 		}
 	})
 
@@ -77,6 +82,7 @@ func (f *RobocatFlow) Err() error {
 func (f *RobocatFlow) Close() {
 	f.client.unsubscribe(f.ref)
 	f.log.Close()
+	f.output.Close()
 }
 
 func (f *RobocatFlow) Done() <-chan struct{} {
@@ -93,4 +99,8 @@ func (f *RobocatFlow) Wait() error {
 
 func (f *RobocatFlow) Log() *RobocatLogStream {
 	return f.log
+}
+
+func (f *RobocatFlow) Output() *RobocatOutputStream {
+	return f.output
 }
