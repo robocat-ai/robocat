@@ -1,17 +1,14 @@
 package robocat
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"testing"
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/sakirsensoy/genv"
-	"nhooyr.io/websocket"
 )
 
 var wsServerAddress string
@@ -51,8 +48,14 @@ func TestMain(m *testing.M) {
 	if container == nil {
 		container, err = pool.BuildAndRunWithOptions("./../../Dockerfile", &dockertest.RunOptions{
 			Name:         "robocat-test",
-			ExposedPorts: []string{"80/tcp"},
+			ExposedPorts: []string{"80/tcp", "5900"},
+			PortBindings: map[docker.Port][]docker.PortBinding{
+				"5900": {
+					{HostIP: "0.0.0.0", HostPort: "5900"},
+				},
+			},
 			Env: []string{
+				"VNC_ENABLED=1",
 				fmt.Sprintf("AUTH_USERNAME=%s", wsServerUsername),
 				fmt.Sprintf("AUTH_PASSWORD=%s", wsServerPassword),
 			},
@@ -72,26 +75,16 @@ func TestMain(m *testing.M) {
 	wsServerAddress = container.GetHostPort("80/tcp")
 
 	if err := pool.Retry(func() error {
-		u, err := url.Parse(fmt.Sprintf("http://%s", wsServerAddress))
-		if err != nil {
-			return err
-		}
+		log.Printf("Trying to connect to %s...", wsServerAddress)
 
-		if len(wsServerUsername) > 0 {
-			u.User = url.UserPassword(wsServerUsername, wsServerPassword)
-		}
+		client := NewClient()
+		defer client.Close()
 
-		conn, _, err := websocket.Dial(
-			context.Background(),
-			u.String(),
-			&websocket.DialOptions{
-				Subprotocols: []string{"robocat"},
-			})
-		if err != nil {
-			return err
-		}
-
-		return conn.Close(websocket.StatusNormalClosure, "")
+		return client.Connect(
+			fmt.Sprintf("ws://%s", wsServerAddress), Credentials{
+				wsServerUsername, wsServerPassword,
+			},
+		)
 	}); err != nil {
 		log.Fatalf("Could not connect to the server: %s", err)
 	}
