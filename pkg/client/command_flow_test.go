@@ -16,18 +16,9 @@ func TestFlowCommand(t *testing.T) {
 	flow := client.Flow("01-example-com").WithTimeout(15 * time.Second).Run()
 	assert.NoError(t, flow.Err())
 
-	go func() {
-		log := flow.Log()
-
-		for {
-			line, ok := <-log.Channel()
-			if !ok {
-				break
-			}
-
-			t.Log(line)
-		}
-	}()
+	go flow.Log().Watch(func(line string) {
+		t.Log(line)
+	})
 
 	err := flow.Wait()
 	assert.NoError(t, err)
