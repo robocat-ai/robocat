@@ -57,7 +57,7 @@ func TestMain(m *testing.M) {
 		}, func(config *docker.HostConfig) {
 			config.AutoRemove = true
 			config.Mounts = append(config.Mounts, docker.HostMount{
-				Target: "/home/robocat/flow",
+				Target: "/flow",
 				Source: fmt.Sprintf("%s/test-flow", pwd),
 				Type:   "bind",
 			})
