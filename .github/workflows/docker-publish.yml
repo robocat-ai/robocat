@@ -36,7 +36,7 @@ jobs:
               env:
                   APP_ENV: local
               run: |
-                  go test -timeout 30s ./... -covermode=atomic -coverprofile=coverage.out -failfast -short
+                  go test -v -timeout 30s ./... -covermode=atomic -coverprofile=coverage.out -failfast
 
     build:
         needs:
