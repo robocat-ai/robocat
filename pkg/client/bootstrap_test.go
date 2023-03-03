@@ -47,15 +47,10 @@ func TestMain(m *testing.M) {
 
 	if container == nil {
 		container, err = pool.BuildAndRunWithOptions("./../../Dockerfile", &dockertest.RunOptions{
+			User:         "root",
 			Name:         "robocat-test",
-			ExposedPorts: []string{"80/tcp", "5900"},
-			PortBindings: map[docker.Port][]docker.PortBinding{
-				"5900": {
-					{HostIP: "0.0.0.0", HostPort: "5900"},
-				},
-			},
+			ExposedPorts: []string{"80/tcp"},
 			Env: []string{
-				"VNC_ENABLED=1",
 				fmt.Sprintf("AUTH_USERNAME=%s", wsServerUsername),
 				fmt.Sprintf("AUTH_PASSWORD=%s", wsServerPassword),
 			},
