@@ -41,16 +41,7 @@ jobs:
 
             - name: Run tests
               env:
-                  CGO_ENABLED: 0
                   APP_ENV: local
-                  TELEGRAM_TOKEN: ${{ secrets.CI_TELEGRAM_TOKEN }}
-                  TELEGRAM_CHAT_ID: ${{ secrets.CI_TELEGRAM_CHAT_ID }}
-                  PROXY6_API_KEY: ${{ secrets.CI_PROXY6_API_KEY }}
-                  2CAPTCHA_API_KEY: ${{ secrets.CI_2CAPTCHA_API_KEY }}
-                  ANTICAPTCHA_API_KEY: ${{ secrets.CI_ANTICAPTCHA_API_KEY }}
-                  FK_ID: ${{ secrets.CI_FK_ID }}
-                  FK_SECRET_1: ${{ secrets.CI_FK_SECRET_1 }}
-                  FK_SECRET_2: ${{ secrets.CI_FK_SECRET_2 }}
               run: |
                   go test -timeout 30s ./... -covermode=atomic -coverprofile=coverage.out -failfast -short
 
