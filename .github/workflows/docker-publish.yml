@@ -34,6 +34,7 @@ jobs:
 
             - name: Run tests
               env:
+                  CGO_ENABLED: 0
                   APP_ENV: local
               run: |
                   go test -v -timeout 30s ./... -covermode=atomic -coverprofile=coverage.out -failfast
