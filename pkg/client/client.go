@@ -22,6 +22,8 @@ type Client struct {
 	registeredCallbacks map[string][]UpdateCallback
 
 	cancelFlow chan struct{}
+
+	input *RobocatInput
 }
 
 func NewClient() *Client {
@@ -117,4 +119,14 @@ func (c *Client) listenForUpdates() {
 // when child flow of this client should be canceled.
 func (c *Client) CancelFlow() <-chan struct{} {
 	return c.cancelFlow
+}
+
+func (c *Client) getInput() *RobocatInput {
+	if c.input == nil {
+		c.input = &RobocatInput{
+			client: c,
+		}
+	}
+
+	return c.input
 }
