@@ -14,14 +14,14 @@ type RobocatFlow struct {
 	err    error
 
 	log    *RobocatLogStream
-	output *RobocatOutputStream
+	output *RobocatFileStream
 }
 
 func (chain *FlowCommandChain) Run() *RobocatFlow {
 	flow := &RobocatFlow{
 		client: chain.client,
 		log:    &RobocatLogStream{},
-		output: &RobocatOutputStream{},
+		output: &RobocatFileStream{},
 	}
 
 	ref, err := chain.client.sendCommand("run", chain.args)
@@ -107,6 +107,6 @@ func (f *RobocatFlow) Log() *RobocatLogStream {
 	return f.log
 }
 
-func (f *RobocatFlow) Output() *RobocatOutputStream {
+func (f *RobocatFlow) Files() *RobocatFileStream {
 	return f.output
 }

@@ -4,6 +4,6 @@ import (
 	"github.com/robocat-ai/robocat/internal/ws"
 )
 
-type RobocatOutputStream struct {
+type RobocatFileStream struct {
 	RobocatStream[*ws.RobocatFile]
 }
