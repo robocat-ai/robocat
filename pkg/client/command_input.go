@@ -1,9 +1,12 @@
 package robocat
 
 import (
-	"github.com/robocat-ai/robocat/internal/ws"
+	"mime"
+	"path/filepath"
 )
 
-func (c *Client) Input(file *ws.RobocatFile) error {
-	return c.getInput().Push(file)
+func (c *Client) Input(path string, content []byte) error {
+	mimeType := mime.TypeByExtension(filepath.Ext(path))
+
+	return c.getInput().Push(path, mimeType, content)
 }

@@ -5,9 +5,13 @@ import (
 	"path"
 	"testing"
 
-	"github.com/robocat-ai/robocat/internal/ws"
 	"github.com/stretchr/testify/assert"
 )
+
+type InputTestFile struct {
+	Path    string
+	Payload []byte
+}
 
 func TestInput(t *testing.T) {
 	client := newTestClient(t)
@@ -15,7 +19,7 @@ func TestInput(t *testing.T) {
 
 	client.DebugLogger(t.Log)
 
-	files := []*ws.RobocatFile{
+	files := []*InputTestFile{
 		{
 			Path: "sample-text",
 		},
@@ -39,7 +43,7 @@ func TestInput(t *testing.T) {
 
 		file.Payload = bytes
 
-		err = client.Input(file)
+		err = client.Input(file.Path, file.Payload)
 		assert.NoError(t, err)
 
 		bytes, err = os.ReadFile(path.Join(targetDir, file.Path))
