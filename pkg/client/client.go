@@ -76,6 +76,7 @@ func Connect(u string, credentials ...Credentials) (*Client, error) {
 	return client, nil
 }
 
+// Nax number of bytes to read for a single message.
 // Limit must be in human-readable format (i.e. 10M, 50KB, etc) - for more
 // details refer to https://pkg.go.dev/github.com/docker/go-units@v0.5.0#section-documentation
 func (c *Client) SetSizeLimit(limit string) error {
