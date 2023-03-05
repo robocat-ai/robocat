@@ -26,7 +26,7 @@ func TestFlowCommand(t *testing.T) {
 
 	var outputError error
 
-	go flow.Files().Watch(func(file *ws.RobocatFile) {
+	go flow.Files().Watch(func(file *File) {
 		if file.Kind() == "text" {
 			t.Logf("Client received TEXT: %s", file.Text())
 			if file.Text() != "Example Domain" {

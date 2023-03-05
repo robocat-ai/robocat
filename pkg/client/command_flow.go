@@ -74,7 +74,11 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 				cancel()
 			}
 
-			flow.output.Push(file)
+			flow.output.Push(&File{
+				Path:     file.Path,
+				MimeType: file.MimeType,
+				Payload:  file.Payload,
+			})
 		}
 	})
 
