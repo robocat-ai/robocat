@@ -54,5 +54,5 @@ func (r *RobocatInput) Handle(
 
 	message.Reply("status", "ok")
 
-	log.Debugw("Written input", "path", fields.Path)
+	log.Debugw("Written input", "path", fields.Path, "len", len(fields.Payload))
 }
