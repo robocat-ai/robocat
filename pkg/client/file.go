@@ -3,6 +3,8 @@ package robocat
 import (
 	"bytes"
 	"image"
+	_ "image/jpeg"
+	_ "image/png"
 	"mime"
 	"strings"
 )
