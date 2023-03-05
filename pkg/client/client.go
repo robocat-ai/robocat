@@ -26,7 +26,7 @@ type Client struct {
 	input *RobocatInput
 }
 
-func NewClient() *Client {
+func makeClient() *Client {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	client := &Client{
@@ -41,20 +41,12 @@ func NewClient() *Client {
 	return client
 }
 
-func (c *Client) log(args ...any) {
-	if c.logger != nil {
-		c.logger(args...)
-	}
-}
+func Connect(u string, credentials ...Credentials) (*Client, error) {
+	client := makeClient()
 
-func (c *Client) DebugLogger(logger func(args ...any)) {
-	c.logger = logger
-}
-
-func (c *Client) Connect(u string, credentials ...Credentials) error {
 	url, err := url.Parse(u)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(credentials) > 0 {
@@ -62,17 +54,17 @@ func (c *Client) Connect(u string, credentials ...Credentials) error {
 	}
 
 	conn, _, err := websocket.Dial(
-		c.ctx,
+		client.ctx,
 		url.String(),
 		&websocket.DialOptions{
 			Subprotocols: []string{"robocat"},
 		},
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	c.conn = conn
+	client.conn = conn
 
 	size, err := units.FromHumanSize(
 		genv.Key("MAX_READ_SIZE").Default("1M").String(),
@@ -81,11 +73,11 @@ func (c *Client) Connect(u string, credentials ...Credentials) error {
 		log.Fatal(err)
 	}
 
-	c.conn.SetReadLimit(size)
+	client.conn.SetReadLimit(size)
 
-	go c.listenForUpdates()
+	go client.listenForUpdates()
 
-	return nil
+	return client, nil
 }
 
 func (c *Client) Close() error {
@@ -95,6 +87,16 @@ func (c *Client) Close() error {
 	}
 
 	return nil
+}
+
+func (c *Client) log(args ...any) {
+	if c.logger != nil {
+		c.logger(args...)
+	}
+}
+
+func (c *Client) DebugLogger(logger func(args ...any)) {
+	c.logger = logger
 }
 
 func (c *Client) listenForUpdates() {
