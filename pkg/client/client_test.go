@@ -7,11 +7,10 @@ import (
 )
 
 func newTestClient(t *testing.T) *Client {
-	client := NewClient()
-
-	if err := client.Connect(fmt.Sprintf("ws://%s", wsServerAddress), Credentials{
+	client, err := Connect(fmt.Sprintf("ws://%s", wsServerAddress), Credentials{
 		wsServerUsername, wsServerPassword,
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 
