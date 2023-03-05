@@ -66,18 +66,27 @@ func Connect(u string, credentials ...Credentials) (*Client, error) {
 
 	client.conn = conn
 
-	size, err := units.FromHumanSize(
-		genv.Key("MAX_READ_SIZE").Default("1M").String(),
-	)
+	err = client.SetSizeLimit(genv.Key("MAX_READ_SIZE").Default("1M").String())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	client.conn.SetReadLimit(size)
-
 	go client.listenForUpdates()
 
 	return client, nil
+}
+
+// Limit must be in human-readable format (i.e. 10M, 50KB, etc) - for more
+// details refer to https://pkg.go.dev/github.com/docker/go-units@v0.5.0#section-documentation
+func (c *Client) SetSizeLimit(limit string) error {
+	size, err := units.FromHumanSize(limit)
+	if err != nil {
+		return err
+	}
+
+	c.conn.SetReadLimit(size)
+
+	return nil
 }
 
 func (c *Client) Close() error {
