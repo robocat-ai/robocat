@@ -8,31 +8,7 @@ import (
 
 type Options struct {
 	ListenAddress string
-
-	Profile string
-	// "/run.html" by default
-	AutostartFile string
-	// "/home/robocat/Desktop/uivision" by default
-	UIVisionDir string
-
-	Macro string
 }
-
-// func getUIVisionDir() string {
-// 	uivisionDir := flag.Arg(0)
-// 	if len(uivisionDir) == 0 {
-// 		uivisionDir = "."
-// 	}
-
-// 	uivisionDir, err := filepath.Abs(uivisionDir)
-// 	if err != nil {
-// 		log.Fatalf("Path '%s' is not valid", uivisionDir)
-// 	}
-
-// 	log.Debugf("Got directory for UI.Vision RPA: %s", uivisionDir)
-
-// 	return uivisionDir
-// }
 
 func InitializeOptions() Options {
 	options := Options{}
@@ -44,10 +20,5 @@ func InitializeOptions() Options {
 
 	flag.Parse()
 
-	// options.Macro = genv.Key("MACRO").String()
-	// if len(options.Macro) == 0 {
-	// 	log.Fatal("MACRO must not be empty")
-	// }
-
-	return options
+    return options
 }
