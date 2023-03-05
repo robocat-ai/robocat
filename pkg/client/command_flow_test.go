@@ -3,6 +3,7 @@ package robocat
 import (
 	"bytes"
 	"fmt"
+	_ "image/jpeg"
 	"image/png"
 	"testing"
 	"time"
