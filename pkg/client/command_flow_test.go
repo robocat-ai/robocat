@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/robocat-ai/robocat/internal/ws"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,13 +19,13 @@ func TestFlowCommand(t *testing.T) {
 	flow := client.Flow("01-example-com").WithTimeout(15 * time.Second).Run()
 	assert.NoError(t, flow.Err())
 
-	go flow.Log().Watch(func(line string) {
+	flow.Log().Watch(func(line string) {
 		// t.Log(line)
 	})
 
 	var outputError error
 
-	go flow.Files().Watch(func(file *File) {
+	flow.Files().Watch(func(file *File) {
 		if file.Kind() == "text" {
 			t.Logf("Client received TEXT: %s", file.Text())
 			if file.Text() != "Example Domain" {
