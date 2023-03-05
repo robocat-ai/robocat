@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 	}
 
 	if container == nil {
-		container, err = pool.BuildAndRunWithOptions("./../../Dockerfile", &dockertest.RunOptions{
+		runOptions := &dockertest.RunOptions{
 			Name:         "robocat-test",
 			ExposedPorts: []string{"80/tcp"},
 			Env: []string{
@@ -54,19 +54,29 @@ func TestMain(m *testing.M) {
 				fmt.Sprintf("AUTH_USERNAME=%s", wsServerUsername),
 				fmt.Sprintf("AUTH_PASSWORD=%s", wsServerPassword),
 			},
-		}, func(config *docker.HostConfig) {
-			config.AutoRemove = true
-			config.Mounts = append(config.Mounts, docker.HostMount{
-				Target: "/flow",
-				Source: fmt.Sprintf("%s/test-flow", pwd),
-				Type:   "bind",
-			})
-			config.Mounts = append(config.Mounts, docker.HostMount{
-				Target: "/home/robocat/flow",
-				Source: fmt.Sprintf("%s/test-flow", pwd),
-				Type:   "bind",
-			})
-		})
+		}
+
+		if genv.Key("DOCKERTEST_RUN_AS_ROOT").Bool() {
+			runOptions.User = "root"
+		}
+
+		container, err = pool.BuildAndRunWithOptions(
+			"./../../Dockerfile",
+			runOptions,
+			func(config *docker.HostConfig) {
+				config.AutoRemove = true
+				config.Mounts = append(config.Mounts, docker.HostMount{
+					Target: "/flow",
+					Source: fmt.Sprintf("%s/test-flow", pwd),
+					Type:   "bind",
+				})
+				config.Mounts = append(config.Mounts, docker.HostMount{
+					Target: "/home/robocat/flow",
+					Source: fmt.Sprintf("%s/test-flow", pwd),
+					Type:   "bind",
+				})
+			},
+		)
 		if err != nil {
 			log.Fatalf("Could not start resource: %s", err)
 		}
