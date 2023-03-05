@@ -57,6 +57,11 @@ func TestMain(m *testing.M) {
 		}, func(config *docker.HostConfig) {
 			config.AutoRemove = true
 			config.Mounts = append(config.Mounts, docker.HostMount{
+				Target: "/flow",
+				Source: fmt.Sprintf("%s/test-flow", pwd),
+				Type:   "bind",
+			})
+			config.Mounts = append(config.Mounts, docker.HostMount{
 				Target: "/home/robocat/flow",
 				Source: fmt.Sprintf("%s/test-flow", pwd),
 				Type:   "bind",
@@ -72,24 +77,22 @@ func TestMain(m *testing.M) {
 	if err := pool.Retry(func() error {
 		log.Printf("Trying to connect to %s...", wsServerAddress)
 
-		client := NewClient()
-		defer client.Close()
-
-		return client.Connect(
+		client, err := Connect(
 			fmt.Sprintf("ws://%s", wsServerAddress), Credentials{
 				wsServerUsername, wsServerPassword,
 			},
 		)
+		if err != nil {
+			return err
+		}
+
+		defer client.Close()
+		return nil
 	}); err != nil {
 		log.Fatalf("Could not connect to the server: %s", err)
 	}
 
 	code := m.Run()
-
-	// You can't defer this because os.Exit doesn't care for defer
-	// if err := pool.Purge(container); err != nil {
-	// 	log.Fatalf("Could not purge resource: %s", err)
-	// }
 
 	os.Exit(code)
 }
