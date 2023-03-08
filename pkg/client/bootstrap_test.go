@@ -40,6 +40,7 @@ func TestMain(m *testing.M) {
 	if found {
 		if genv.Key("DOCKERTEST_REUSE_CONTAINER").Bool() {
 			container = existing
+			log.Println("Using existing container")
 		} else if err := pool.Purge(existing); err != nil {
 			log.Fatalf("Could not purge resource: %s", err)
 		}
@@ -59,6 +60,8 @@ func TestMain(m *testing.M) {
 		if genv.Key("DOCKERTEST_RUN_AS_ROOT").Bool() {
 			runOptions.User = "root"
 		}
+
+		log.Println("Creating new container")
 
 		container, err = pool.BuildAndRunWithOptions(
 			"./../../Dockerfile",
@@ -96,8 +99,7 @@ func TestMain(m *testing.M) {
 			return err
 		}
 
-		defer client.Close()
-		return nil
+		return client.Close()
 	}); err != nil {
 		log.Fatalf("Could not connect to the server: %s", err)
 	}
