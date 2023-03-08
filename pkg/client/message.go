@@ -2,6 +2,7 @@ package robocat
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/oklog/ulid/v2"
 	"github.com/robocat-ai/robocat/internal/ws"
@@ -44,7 +45,7 @@ func (c *Client) sendCommand(name string, body ...interface{}) (string, error) {
 func updateFromBytes(bytes []byte) (*ws.Message, error) {
 	message, err := ws.MessageFromBytes(bytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to unmarshal message: %w", err)
 	}
 
 	if message.Type != ws.Update {
@@ -57,7 +58,7 @@ func updateFromBytes(bytes []byte) (*ws.Message, error) {
 func (c *Client) readUpdate() (*ws.Message, error) {
 	_, bytes, err := c.conn.Read(c.ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("connection error: %w", err)
 	}
 
 	msg, err := updateFromBytes(bytes)
