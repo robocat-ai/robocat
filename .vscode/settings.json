@@ -1,5 +1,7 @@
 {
     "go.testEnvVars": {
-        "DOCKERTEST_REUSE_CONTAINER": true,
+        // "MAX_READ_SIZE": "1k",
+        // "DOCKERTEST_RUN_AS_ROOT": true,
+        // "DOCKERTEST_REUSE_CONTAINER": true,
     }
 }

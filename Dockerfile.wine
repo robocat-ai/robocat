@@ -1,0 +1,9 @@
+FROM ghcr.io/robocat-ai/robocat:latest
+
+RUN apt-get install -y winetricks && \
+    dpkg --add-architecture i386 && apt-get update && apt-get install wine32
+
+RUN winetricks -q mspaint
+
+# https://appdb.winehq.org/objectManager.php?sClass=version&iId=17336
+# dotnet2
