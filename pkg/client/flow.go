@@ -2,6 +2,7 @@ package robocat
 
 import (
 	"context"
+	"fmt"
 )
 
 type RobocatFlow struct {
@@ -16,10 +17,14 @@ type RobocatFlow struct {
 
 func (f *RobocatFlow) Err() error {
 	if f.err != nil {
-		return f.err
+		return fmt.Errorf("flow error: %w", f.err)
 	}
 
-	return f.client.err
+	if f.client.err != nil {
+		return fmt.Errorf("client error: %w", f.client.err)
+	}
+
+	return nil
 }
 
 func (f *RobocatFlow) Close() {
