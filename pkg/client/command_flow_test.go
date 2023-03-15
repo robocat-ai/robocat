@@ -2,6 +2,7 @@ package robocat
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	_ "image/jpeg"
 	"image/png"
@@ -68,4 +69,17 @@ func TestMissingFlow(t *testing.T) {
 
 	err := flow.Wait()
 	assert.ErrorContains(t, err, "cannot find missing-flow")
+}
+
+func TestFlowTimeout(t *testing.T) {
+	client := newTestClient(t)
+	defer client.Close()
+
+	client.DebugLogger(t.Log)
+
+	flow := client.Flow("01-example-com").WithTimeout(time.Second).Run()
+	assert.NoError(t, flow.Err())
+
+	err := flow.Wait()
+	assert.ErrorContains(t, err, context.DeadlineExceeded.Error())
 }

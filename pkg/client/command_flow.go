@@ -86,6 +86,9 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 		defer flow.Close()
 		defer cancel()
 
+		flow.errWait.Add(1)
+		defer flow.errWait.Done()
+
 		for {
 			select {
 			case <-ctx.Done():
