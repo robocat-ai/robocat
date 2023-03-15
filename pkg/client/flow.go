@@ -3,6 +3,7 @@ package robocat
 import (
 	"context"
 	"fmt"
+	"sync"
 )
 
 type RobocatFlow struct {
@@ -10,6 +11,8 @@ type RobocatFlow struct {
 	ref    string
 	ctx    context.Context
 	err    error
+
+	errWait sync.WaitGroup
 
 	log    *RobocatLogStream
 	output *RobocatFileStream
@@ -42,6 +45,7 @@ func (f *RobocatFlow) Wait() error {
 		// Wait for context to finish.
 	}
 
+	f.errWait.Wait()
 	return f.Err()
 }
 
