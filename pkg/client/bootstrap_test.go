@@ -1,6 +1,7 @@
 package robocat
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -84,6 +85,22 @@ func TestMain(m *testing.M) {
 			log.Fatalf("Could not start resource: %s", err)
 		}
 	}
+
+	go func() {
+		pool.Client.Logs(docker.LogsOptions{
+			Context: context.Background(),
+
+			Stderr:     true,
+			Stdout:     true,
+			Follow:     true,
+			Timestamps: false,
+
+			Container: container.Container.ID,
+
+			OutputStream: os.Stdout,
+			ErrorStream:  os.Stdout,
+		})
+	}()
 
 	wsServerAddress = container.GetHostPort("80/tcp")
 
