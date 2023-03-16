@@ -21,13 +21,13 @@ func (r *RobocatInput) Handle(
 	ctx context.Context,
 	message *Message,
 ) {
-	fields, err := ParseFileFromMessage(message)
+	file, err := ParseFileFromMessage(message)
 	if err != nil {
 		message.ReplyWithError(err)
 		return
 	}
 
-	if len(fields.Path) == 0 {
+	if len(file.Path) == 0 {
 		message.ReplyWithError(errors.New("file path must not be empty"))
 		return
 	}
@@ -38,15 +38,19 @@ func (r *RobocatInput) Handle(
 		return
 	}
 
-	filePath := path.Join(inputBasePath, fields.Path)
+	absolutePath := path.Join(inputBasePath, file.Path)
 
-	err = os.MkdirAll(path.Dir(filePath), 0755)
+	log.Debugw("Creating directory for input", "path", path.Dir(absolutePath))
+
+	err = os.MkdirAll(path.Dir(absolutePath), 0777)
 	if err != nil {
 		message.ReplyWithError(err)
 		return
 	}
 
-	err = os.WriteFile(filePath, fields.Payload, 0644)
+	log.Debugw("Writing input", "path", absolutePath)
+
+	err = os.WriteFile(absolutePath, file.Payload, 0644)
 	if err != nil {
 		message.ReplyWithError(err)
 		return
@@ -54,5 +58,5 @@ func (r *RobocatInput) Handle(
 
 	message.Reply("status", "ok")
 
-	log.Debugw("Written input", "path", fields.Path, "len", len(fields.Payload))
+	log.Debugw("Written input", "file", file.Path, "len", len(file.Payload))
 }
