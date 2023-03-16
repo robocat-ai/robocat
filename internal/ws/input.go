@@ -40,7 +40,7 @@ func (r *RobocatInput) Handle(
 
 	filePath := path.Join(inputBasePath, fields.Path)
 
-	err = os.MkdirAll(path.Dir(filePath), 0755)
+	err = os.MkdirAll(inputBasePath, 0755)
 	if err != nil {
 		message.ReplyWithError(err)
 		return
