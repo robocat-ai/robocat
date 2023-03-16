@@ -113,5 +113,5 @@ loop:
 		}
 	}
 
-	log.Debug("Stopped watching output", "ref", message.Ref)
+	log.Debugw("Stopped watching output", "ref", message.Ref)
 }
