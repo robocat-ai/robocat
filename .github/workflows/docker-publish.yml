@@ -20,7 +20,6 @@ env:
     REGISTRY: ghcr.io
     # github.repository as <account>/<repo>
     IMAGE_NAME: ${{ github.repository }}
-    DOCKERTEST_RUN_AS_ROOT: true
 
 jobs:
     test:
