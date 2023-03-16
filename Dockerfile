@@ -15,5 +15,3 @@ RUN CGO_ENABLED=0 go build -v -o main .
 FROM ghcr.io/robocat-ai/robocat-base:latest
 
 COPY --from=build /app/main /usr/local/bin/robocat
-
-# COPY anticaptcha /usr/local/bin/anticaptcha
