@@ -12,7 +12,7 @@ func (r *RobocatRunner) watchLogs(
 	message *Message,
 	stream io.Reader,
 ) {
-	log.Debug("Watching logs")
+	log.Debugw("Watching logs", "ref", message.Ref)
 
 	scanner := bufio.NewScanner(stream)
 
@@ -39,5 +39,5 @@ loop:
 		}
 	}
 
-	log.Debug("Stopped watching logs")
+	log.Debugw("Stopped watching logs", "ref", message.Ref)
 }
