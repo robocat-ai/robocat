@@ -3,6 +3,7 @@ package ws
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"mime"
 	"os"
 	"path/filepath"
@@ -18,12 +19,12 @@ func (r *RobocatRunner) watchOutputPath(
 ) error {
 	outputBasePath, err := r.GetFlowBasePath(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalw(err.Error(), "ref", message.Ref)
 	}
 
 	err = os.MkdirAll(outputBasePath, 0755)
 	if err != nil {
-		log.Warn(err)
+		log.Warnw(err.Error(), "ref", message.Ref)
 		return err
 	}
 
@@ -37,12 +38,12 @@ func (r *RobocatRunner) watchOutputPath(
 
 	go func() {
 		if err := w.Start(time.Millisecond * 100); err != nil {
-			log.Fatalln(err)
+			log.Fatalw(err.Error(), "ref", message.Ref)
 		}
 	}()
 	defer w.Close()
 
-	log.Debugf("Watching directory recusively: %s", outputBasePath)
+	log.Debugw(fmt.Sprintf("Watching directory recusively: %s", outputBasePath), "ref", message.Ref)
 
 	for {
 		select {
@@ -51,11 +52,11 @@ func (r *RobocatRunner) watchOutputPath(
 				continue
 			}
 
-			log.Debugw("Got output update", "path", event.Path)
+			log.Debugw("Got output update", "path", event.Path, "ref", message.Ref)
 
 			path, err := filepath.Rel(outputBasePath, event.Path)
 			if err != nil {
-				log.Warnw("Unable to form relative path", "error", err)
+				log.Warnw("Unable to form relative path", "error", err, "ref", message.Ref)
 				continue
 			}
 
@@ -68,7 +69,7 @@ func (r *RobocatRunner) watchOutputPath(
 
 			payload, err := os.ReadFile(event.Path)
 			if err != nil {
-				log.Warnw("Unable to read file", "error", err, "file", event.Path)
+				log.Warnw("Unable to read file", "error", err, "file", event.Path, "ref", message.Ref)
 				continue
 			}
 
@@ -83,7 +84,7 @@ func (r *RobocatRunner) watchOutputPath(
 			})
 		case err := <-w.Error:
 			if err == watcher.ErrWatchedFileDeleted {
-				log.Debugf("Output directory was removed: %s", outputBasePath)
+				log.Debugw(fmt.Sprintf("Output directory was removed: %s", outputBasePath), "ref", message.Ref)
 				return nil
 			} else {
 				return err
@@ -107,10 +108,10 @@ loop:
 		default:
 			err := r.watchOutputPath(ctx, message, "output")
 			if err != nil {
-				log.Warnf("Got output watcher error: %w", err)
+				log.Warnw(fmt.Sprintf("Got output watcher error: %v", err), "ref", message.Ref)
 			}
 		}
 	}
 
-	log.Debug("Stopped watching output")
+	log.Debug("Stopped watching output", "ref", message.Ref)
 }

@@ -92,7 +92,7 @@ func (r *RobocatRunner) Handle(
 		}
 	}()
 
-	log.Debugw("Running TagUI flow", "flow", args.Flow)
+	log.Debugw("Running TagUI flow", "flow", args.Flow, "ref", message.Ref)
 
 	message.Reply("status", "ok")
 
@@ -102,17 +102,17 @@ loop:
 		// Waiting for parent (request) context to end or process state to
 		// change - whichever comes first.
 		case <-ctx.Done():
-			log.Debug("TagUI disconnected - scheduling clean-up...")
+			log.Debugw("TagUI disconnected - scheduling clean-up...", "ref", message.Ref)
 			go r.scheduleCleanup()
 			break loop
 		case <-r.ctx.Done():
-			log.Debug("Received stop signal - stopping...")
+			log.Debugw("Received stop signal - stopping...", "ref", message.Ref)
 			go r.scheduleCleanup()
 			break loop
 		default:
 			if cmd.ProcessState != nil {
 				if cmd.ProcessState.Exited() {
-					log.Debug("TagUI run finished")
+					log.Debugw("TagUI run finished", "ref", message.Ref)
 					message.Reply("status", "success")
 					break loop
 				}
@@ -128,12 +128,12 @@ func (r *RobocatRunner) Stop(
 	message *Message,
 ) {
 	if r.ctx == nil || r.ctx.Err() != nil {
-		log.Debug("TagUI run is not running - cannot stop")
+		log.Debugw("TagUI run is not running - cannot stop", "ref", message.Ref)
 		message.ReplyWithErrorf("flow is not running - cannot stop")
 		return
 	}
 
-	log.Debug("Sending stop signal...")
+	log.Debugw("Sending stop signal...", "ref", message.Ref)
 
 	r.cancel()
 	message.Reply("status", "ok")
