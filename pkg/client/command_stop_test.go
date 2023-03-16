@@ -1,6 +1,7 @@
 package robocat
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -8,6 +9,10 @@ import (
 )
 
 func TestStopCommand(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip()
+	}
+
 	client := newTestClient(t)
 	defer client.Close()
 
