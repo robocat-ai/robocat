@@ -1,5 +1,5 @@
 {
     "go.testEnvVars": {
-        "DOCKERTEST_REUSE_CONTAINER": true,
+        // "DOCKERTEST_REUSE_CONTAINER": true,
     }
 }
