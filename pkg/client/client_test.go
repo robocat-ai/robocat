@@ -7,7 +7,7 @@ import (
 )
 
 func newTestClient(t *testing.T) *Client {
-	time.Sleep(time.Second)
+	time.Sleep(3 * time.Second)
 
 	client, err := Connect(fmt.Sprintf("ws://%s", wsServerAddress), Credentials{
 		wsServerUsername, wsServerPassword,
