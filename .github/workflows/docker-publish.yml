@@ -21,7 +21,6 @@ env:
     # github.repository as <account>/<repo>
     IMAGE_NAME: ${{ github.repository }}
     DOCKERTEST_RUN_AS_ROOT: true
-    DEBUG: 1
 
 jobs:
     test:
