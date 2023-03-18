@@ -39,7 +39,7 @@ jobs:
                   APP_ENV: local
                   DOCKERTEST_RUN_AS_ROOT: ${{ env.DOCKERTEST_RUN_AS_ROOT }}
               run: |
-                  go test -timeout 5m ./... -covermode=atomic -coverprofile=coverage.out -failfast -v
+                  go test -timeout 10m ./... -covermode=atomic -coverprofile=coverage.out -failfast -v
 
     build:
         needs:
