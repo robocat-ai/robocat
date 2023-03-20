@@ -83,7 +83,7 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 	})
 
 	go func() {
-		defer flow.Close()
+		defer flow.close()
 		defer cancel()
 
 		flow.errWait.Add(1)
