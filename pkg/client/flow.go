@@ -30,7 +30,7 @@ func (f *RobocatFlow) Err() error {
 	return nil
 }
 
-func (f *RobocatFlow) Close() {
+func (f *RobocatFlow) close() {
 	f.client.unsubscribe(f.ref)
 	f.log.Close()
 	f.output.Close()
