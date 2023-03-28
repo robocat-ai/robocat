@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 	"net/url"
+	"os"
 
 	"github.com/docker/go-units"
-	"github.com/sakirsensoy/genv"
 	"nhooyr.io/websocket"
 )
 
@@ -66,7 +66,12 @@ func Connect(u string, credentials ...Credentials) (*Client, error) {
 
 	client.conn = conn
 
-	err = client.SetSizeLimit(genv.Key("MAX_READ_SIZE").Default("1M").String())
+	maxReadSize := os.Getenv("MAX_READ_SIZE")
+	if maxReadSize == "" {
+		maxReadSize = "1M"
+	}
+
+	err = client.SetSizeLimit(maxReadSize)
 	if err != nil {
 		log.Fatal(err)
 	}
