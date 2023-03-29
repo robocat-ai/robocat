@@ -2,6 +2,8 @@ package main
 
 import (
 	"math/rand"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,6 +22,14 @@ func main() {
 	log.Infof("Starting robocat...")
 
 	go ws.Start(options)
+
+	if options.ProfilerEnabled {
+		go func() {
+			log.Debug("Running profiler server on port 6060")
+			log.Debug("Usage: https://pkg.go.dev/net/http/pprof#hdr-Usage_examples")
+			log.Debug(http.ListenAndServe(":6060", nil))
+		}()
+	}
 
 	waitForExitSignal()
 }
