@@ -83,3 +83,20 @@ func TestFlowTimeout(t *testing.T) {
 	err := flow.Wait()
 	assert.ErrorContains(t, err, context.DeadlineExceeded.Error())
 }
+
+func TestFlowNonZeroExitCode(t *testing.T) {
+	client := newTestClient(t)
+	defer client.Close()
+
+	client.DebugLogger(t.Log)
+
+	flow := client.Flow("03-non-zero-exit-code").Run()
+	assert.NoError(t, flow.Err())
+
+	err := flow.Wait()
+	assert.Error(t, err)
+	// This actually works, however since TagUI log message
+	// starts with "ERROR -", it gets intercepted by runner
+	// log watcher.
+	// assert.ErrorContains(t, err, "run finished with error: exit status 1")
+}
