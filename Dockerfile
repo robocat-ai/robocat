@@ -12,6 +12,6 @@ COPY *.go ./
 
 RUN CGO_ENABLED=0 go build -v -o main .
 
-FROM ghcr.io/robocat-ai/robocat-base:v0.1.9
+FROM ghcr.io/robocat-ai/robocat-base
 
 COPY --from=build /app/main /usr/local/bin/robocat
