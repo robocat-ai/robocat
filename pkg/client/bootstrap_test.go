@@ -58,9 +58,9 @@ func TestMain(m *testing.M) {
 			},
 		}
 
-		if genv.Key("DOCKERTEST_RUN_AS_ROOT").Bool() {
-			runOptions.User = "root"
-		}
+		// if genv.Key("DOCKERTEST_RUN_AS_ROOT").Bool() {
+		runOptions.User = "root"
+		// }
 
 		log.Println("Creating new container")
 
@@ -75,8 +75,8 @@ func TestMain(m *testing.M) {
 					Type:   "bind",
 				})
 				config.Mounts = append(config.Mounts, docker.HostMount{
-					Target: "/home/robocat/flow",
-					Source: fmt.Sprintf("%s/test-flow", pwd),
+					Target: "/home/robocat/flow/output",
+					Source: fmt.Sprintf("%s/test-flow/output", pwd),
 					Type:   "bind",
 				})
 			},
