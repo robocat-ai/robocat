@@ -7,7 +7,8 @@ import (
 )
 
 type Options struct {
-	ListenAddress string
+	ListenAddress   string
+	ProfilerEnabled bool
 }
 
 func InitializeOptions() Options {
@@ -18,7 +19,11 @@ func InitializeOptions() Options {
 		"Listen address for the web server (:80 by default)",
 	)
 
+	profilerEnabled := flag.Bool("profile", false, "Enable profiler web-server on port 6060")
+
 	flag.Parse()
 
-    return options
+	options.ProfilerEnabled = *profilerEnabled
+
+	return options
 }
