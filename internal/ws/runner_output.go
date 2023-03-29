@@ -37,7 +37,7 @@ func (r *RobocatRunner) watchOutputPath(
 	}
 
 	go func() {
-		if err := w.Start(time.Millisecond * 100); err != nil {
+		if err := w.Start(time.Millisecond * 300); err != nil {
 			log.Fatalw(err.Error(), "ref", message.Ref)
 		}
 	}()
