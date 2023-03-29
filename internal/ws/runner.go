@@ -81,14 +81,27 @@ func (r *RobocatRunner) Handle(
 	go r.watchLogs(r.ctx, message, out)
 	go r.watchOutput(r.ctx, message)
 
+	cmdContext, cmdFinished := context.WithCancel(r.ctx)
+
 	// Run command asynchrously using cmd.Run() method because it updates
 	// cmd.ProcessState upon process completion, so we can detect when
 	// the process ends.
 	go func() {
-		err = cmd.Run()
+		err = cmd.Start()
 		if err != nil {
 			message.ReplyWithErrorf("unable to start TagUI: %s", err)
+			r.cancel()
 			return
+		}
+
+		err := cmd.Wait()
+
+		if err != nil {
+			message.ReplyWithErrorf("run finished with error: %s", err)
+			r.cancel()
+			return
+		} else {
+			cmdFinished()
 		}
 	}()
 
@@ -109,14 +122,10 @@ loop:
 			log.Debugw("Received stop signal - stopping...", "ref", message.Ref)
 			go r.scheduleCleanup()
 			break loop
-		default:
-			if cmd.ProcessState != nil {
-				if cmd.ProcessState.Exited() {
-					log.Debugw("TagUI run finished", "ref", message.Ref)
-					message.Reply("status", "success")
-					break loop
-				}
-			}
+		case <-cmdContext.Done():
+			log.Debugw("TagUI run finished", "ref", message.Ref)
+			message.Reply("status", "success")
+			break loop
 		}
 	}
 
