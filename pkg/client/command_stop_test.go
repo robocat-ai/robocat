@@ -26,7 +26,6 @@ func TestStopCommand(t *testing.T) {
 	err := client.Stop()
 	assert.NoError(t, err)
 
-	flow.Wait()
-
-	assert.ErrorContains(t, flow.Err(), "flow was aborted")
+	err = flow.Wait()
+	assert.ErrorContains(t, err, "flow was aborted")
 }
