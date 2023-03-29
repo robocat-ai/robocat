@@ -40,6 +40,14 @@ jobs:
               run: |
                   go test -timeout 10m ./... -covermode=atomic -coverprofile=coverage.out -failfast -v
 
+            - name: Upload coverage
+              uses: codecov/codecov-action@v3
+              with:
+                  token: ${{ secrets.CI_CODECOV_TOKEN }}
+                  files: coverage.out
+                  fail_ci_if_error: true
+                  verbose: true
+
     build:
         needs:
             - test
