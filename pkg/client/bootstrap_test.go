@@ -128,7 +128,7 @@ func TestMain(m *testing.M) {
 
 func setClientLogger(client *Client, t *testing.T) {
 	client.SetLogger(&Logger{
-		debug: t.Log,
-		error: t.Log,
+		Debug: t.Log,
+		Error: t.Log,
 	})
 }
