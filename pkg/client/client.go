@@ -132,9 +132,9 @@ func (c *Client) listenForUpdates() {
 	}
 }
 
-// CancelFlow returns a channel that's closed
+// cancelFlowChannel returns a channel that's closed
 // when child flow of this client should be canceled.
-func (c *Client) CancelFlow() <-chan struct{} {
+func (c *Client) cancelFlowChannel() <-chan struct{} {
 	return c.cancelFlow
 }
 
