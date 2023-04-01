@@ -164,6 +164,12 @@ func (s *Server) listenForCommands(
 		typ, bytes, err := c.Read(ctx)
 
 		if err != nil {
+			log.Warn(err)
+			log.Debugf(
+				"Got error while reading message: %v",
+				err,
+			)
+
 			close.Done()
 			return
 		} else {
