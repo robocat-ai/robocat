@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"os"
 	"strings"
+	"time"
 )
 
 func (r *RobocatRunner) watchLogs(
@@ -16,7 +18,14 @@ func (r *RobocatRunner) watchLogs(
 
 	scanner := bufio.NewScanner(stream)
 
+	startPrefix := "START - automation started"
 	errorPrefix := "ERROR - "
+
+	var automationWatchdogTimer *time.Timer
+	automationWatchdogTimeout, err := time.ParseDuration(os.Getenv("AUTOMATION_START_TIMEOUT"))
+	if err != nil {
+		automationWatchdogTimeout = time.Minute
+	}
 
 loop:
 	for scanner.Scan() {
@@ -26,7 +35,19 @@ loop:
 			break loop
 		default:
 			line := scanner.Text()
-			if strings.HasPrefix(line, errorPrefix) {
+			message.Reply("log", scanner.Text())
+
+			if strings.HasPrefix(line, startPrefix) {
+				automationWatchdogTimer = time.AfterFunc(
+					automationWatchdogTimeout, func() {
+						r.cancel()
+						message.ReplyWithErrorf(
+							"automation start timeout reached (%s)",
+							automationWatchdogTimeout,
+						)
+					},
+				)
+			} else if strings.HasPrefix(line, errorPrefix) {
 				r.cancel()
 				message.ReplyWithErrorf(
 					"got error during run execution: %s",
@@ -34,9 +55,15 @@ loop:
 				)
 				break loop
 			} else {
-				message.Reply("log", scanner.Text())
+				if automationWatchdogTimer != nil {
+					automationWatchdogTimer.Stop()
+				}
 			}
 		}
+	}
+
+	if automationWatchdogTimer != nil {
+		automationWatchdogTimer.Stop()
 	}
 
 	log.Debugw("Stopped watching logs", "ref", message.Ref)
