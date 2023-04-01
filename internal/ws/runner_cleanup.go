@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"os"
 	"os/exec"
 	"time"
 )
@@ -10,13 +11,18 @@ func (r *RobocatRunner) scheduleCleanup() {
 
 	log.Debug("Clean-up scheduled")
 
+	cleanUpDuration, err := time.ParseDuration(os.Getenv("CLEANUP_TIMEOUT"))
+	if err != nil {
+		cleanUpDuration = time.Second
+	}
+
 	for {
 		select {
 		case <-r.abortScheduledCleanupSignal:
 			log.Debug("Scheduled clean-up aborted")
 			r.cleanupScheduled = false
 			return
-		case <-time.After(time.Second * 5):
+		case <-time.After(cleanUpDuration):
 			log.Debug("Cleaning up previous TagUI session")
 			r.cleanup()
 			r.cleanupScheduled = false
