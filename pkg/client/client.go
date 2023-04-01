@@ -112,13 +112,13 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) logDebug(args ...any) {
-	if c.logger != nil {
+	if c.logger != nil && c.logger.Debug != nil {
 		c.logger.Debug(args...)
 	}
 }
 
 func (c *Client) logError(args ...any) {
-	if c.logger != nil {
+	if c.logger != nil && c.logger.Error != nil {
 		c.logger.Error(args...)
 	}
 }
