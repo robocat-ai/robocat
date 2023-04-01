@@ -2,6 +2,8 @@ package robocat
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -133,6 +135,10 @@ func (c *Client) listenForUpdates() {
 		default:
 			message, err := c.readUpdate()
 			if err != nil {
+				if !errors.Is(err, context.Canceled) {
+					c.logError(fmt.Errorf("got listen error: %v", err))
+				}
+
 				c.err = err
 				c.Close()
 				continue
