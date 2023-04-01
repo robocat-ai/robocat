@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sync"
+	"time"
 
 	"nhooyr.io/websocket"
 )
@@ -92,18 +92,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	close := &sync.WaitGroup{}
-	close.Add(1)
-
 	s.reset()
 
 	s.active = true
 	defer s.reset()
 
-	go s.listenForCommands(close, c, ctx, client)
+	go s.listenForCommands(c, ctx, cancel)
 	go s.listenForUpdates(c, ctx)
 
-	close.Wait()
+	<-ctx.Done()
+
+	c.Close(websocket.StatusNormalClosure, "")
 
 	log.Info("Connection closed")
 }
@@ -152,67 +151,81 @@ func (s *Server) processCommand(ctx context.Context, message *Message) error {
 	return nil
 }
 
-func (s *Server) listenForCommands(
-	close *sync.WaitGroup,
+func (s *Server) readCommand(
 	c *websocket.Conn,
 	ctx context.Context,
-	client string,
+	cancel context.CancelFunc,
+) {
+	typ, bytes, err := c.Read(ctx)
+	status := websocket.CloseStatus(err)
+
+	if status != -1 {
+		log.Debugw("Got close request", "status", status.String())
+		cancel()
+		return
+	} else if !s.ConnectionEstablished() {
+		log.Debug("Read message while connection was not established")
+		cancel()
+		return
+	} else if err != nil {
+		log.Debugw(
+			"Got error while reading message",
+			"error", err,
+			"message", string(bytes),
+		)
+		cancel()
+		return
+	} else {
+		if typ != websocket.MessageText {
+			log.Debug("Only text messages are allowed")
+			s.SendError(fmt.Errorf("only text messages are allowed"))
+			return
+		}
+
+		log.With("command", string(bytes)).Debug("Received command")
+
+		command, err := commandFromBytes(bytes)
+		if err != nil {
+			log.Debugw(
+				"Got error while trying to parse command",
+				"command", string(bytes),
+				"error", err,
+			)
+
+			s.SendError(err)
+
+			return
+		}
+
+		err = s.processCommand(ctx, command)
+		if err != nil {
+			log.Debugw(
+				"Got error while processing command",
+				"command", command.Name,
+				"error", err,
+			)
+
+			s.SendError(err)
+
+			return
+		}
+	}
+}
+
+func (s *Server) listenForCommands(
+	c *websocket.Conn,
+	ctx context.Context,
+	cancel context.CancelFunc,
 ) {
 	s.commands = make(chan *Message)
 
 	for {
-		typ, bytes, err := c.Read(ctx)
-
-		if err != nil {
-			log.Warn(err)
-			log.Debugf(
-				"Got error while reading message: %v",
-				err,
-			)
-
-			close.Done()
+		select {
+		case <-ctx.Done():
 			return
-		} else {
-			if typ != websocket.MessageText {
-				log.Debug("Only text messages are allowed")
-				continue
-			}
-
-			log.With("command", string(bytes)).Debug("Received command")
-
-			command, err := commandFromBytes(bytes)
-			if err != nil {
-				log.Debugf(
-					"Got error while trying to parse command '%v': %s",
-					string(bytes),
-					err,
-				)
-
-				if !s.ConnectionEstablished() {
-					close.Done()
-					return
-				}
-
-				s.SendError(err)
-
-				continue
-			}
-
-			err = s.processCommand(ctx, command)
-			if err != nil {
-				log.Debugf(
-					"Got error while processing command '%s': %s",
-					command.Name,
-					err,
-				)
-
-				if !s.ConnectionEstablished() {
-					close.Done()
-					return
-				}
-
-				continue
-			}
+		default:
+			s.readCommand(c, ctx, cancel)
+			time.Sleep(time.Second)
 		}
 	}
 }
@@ -221,30 +234,32 @@ func (s *Server) listenForUpdates(c *websocket.Conn, ctx context.Context) {
 	s.updates = make(chan *Message)
 
 	for {
-		update := <-s.updates
+		select {
+		case <-ctx.Done():
+			return
+		case update := <-s.updates:
+			if !s.ConnectionEstablished() {
+				log.Debug("Handshake was not established yet")
+				continue
+			}
 
-		if !s.ConnectionEstablished() {
-			log.Debug("Handshake was not established yet")
-			continue
+			bytes, err := update.Bytes()
+			if err != nil {
+				log.Debugf(
+					"Got error while trying to send update '%v': %s",
+					string(bytes), err,
+				)
+				continue
+			}
+
+			err = c.Write(ctx, websocket.MessageText, bytes)
+			if err != nil {
+				log.Debugf(
+					"Got error while trying to send update '%v': %s",
+					string(bytes), err,
+				)
+				continue
+			}
 		}
-
-		bytes, err := update.Bytes()
-		if err != nil {
-			log.Debugf(
-				"Got error while trying to send update '%v': %s",
-				string(bytes), err,
-			)
-			continue
-		}
-
-		err = c.Write(ctx, websocket.MessageText, bytes)
-		if err != nil {
-			log.Debugf(
-				"Got error while trying to send update '%v': %s",
-				string(bytes), err,
-			)
-			continue
-		}
-
 	}
 }
