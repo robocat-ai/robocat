@@ -27,7 +27,7 @@ func (c *Client) sendCommand(name string, body ...interface{}) (string, error) {
 		return "", err
 	}
 
-	c.log("-> send:", message.Ref, message.Name, message.MustText())
+	c.logDebug("-> send:", message.Ref, message.Name, message.MustText())
 
 	bytes, err := message.Bytes()
 	if err != nil {

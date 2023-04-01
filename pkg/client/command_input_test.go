@@ -17,7 +17,7 @@ func TestInput(t *testing.T) {
 	client := newTestClient(t)
 	defer client.Close()
 
-	client.DebugLogger(t.Log)
+	setClientLogger(client, t)
 
 	files := []*InputTestFile{
 		{

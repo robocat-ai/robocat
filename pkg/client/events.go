@@ -22,7 +22,7 @@ func (c *Client) unsubscribe(ref string) {
 }
 
 func (c *Client) broadcastEvent(ctx context.Context, message *ws.Message) {
-	c.log("<- recv:", message.Ref, message.Name, message.MustText())
+	c.logDebug("<- recv:", message.Ref, message.Name, message.MustText())
 
 	callbacks, ok := c.registeredCallbacks[message.Ref]
 	if ok {

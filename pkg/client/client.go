@@ -10,11 +10,16 @@ import (
 	"nhooyr.io/websocket"
 )
 
+type Logger struct {
+	debug func(args ...any)
+	error func(args ...any)
+}
+
 type Client struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	logger func(args ...any)
+	logger *Logger
 
 	conn *websocket.Conn
 	err  error
@@ -104,13 +109,19 @@ func (c *Client) Close() error {
 	return nil
 }
 
-func (c *Client) log(args ...any) {
+func (c *Client) logDebug(args ...any) {
 	if c.logger != nil {
-		c.logger(args...)
+		c.logger.debug(args...)
 	}
 }
 
-func (c *Client) DebugLogger(logger func(args ...any)) {
+func (c *Client) logError(args ...any) {
+	if c.logger != nil {
+		c.logger.error(args...)
+	}
+}
+
+func (c *Client) SetLogger(logger *Logger) {
 	c.logger = logger
 }
 

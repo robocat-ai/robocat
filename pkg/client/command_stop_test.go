@@ -16,7 +16,7 @@ func TestStopCommand(t *testing.T) {
 	client := newTestClient(t)
 	defer client.Close()
 
-	client.DebugLogger(t.Log)
+	setClientLogger(client, t)
 
 	flow := client.Flow("02-long-polling").WithTimeout(15 * time.Second).Run()
 	assert.NoError(t, flow.Err())
