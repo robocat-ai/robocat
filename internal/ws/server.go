@@ -43,9 +43,9 @@ func NewServer() *Server {
 		registeredCallbacks: make(map[string]CommandCallback),
 	}
 
-	duration, err := time.ParseDuration("1s")
+	duration, err := time.ParseDuration(os.Getenv("SESSION_TIMEOUT"))
 	if err != nil {
-		duration = time.Second
+		duration = time.Minute
 	}
 	server.shutdownTimeout = duration
 
@@ -141,11 +141,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.Close(websocket.StatusNormalClosure, "")
 
 	log.Info("Connection closed")
-
-	s.shutdownTimeout, err = time.ParseDuration(os.Getenv("SESSION_TIMEOUT"))
-	if err != nil {
-		s.shutdownTimeout = time.Minute
-	}
 
 	if s.ctx.session.ctx.Err() == nil {
 		log.Infof("Session is still active - shutting down in %s", s.shutdownTimeout)
