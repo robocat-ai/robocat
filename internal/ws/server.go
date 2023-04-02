@@ -111,7 +111,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// After the user has been granted access, stop session
 	// shutdown timer if one exists.
 	if s.shutdownTimer != nil {
-		log.Debug("Stopping session shutdown timer...")
+		log.Debug("Stopping session shutdown timer")
 		if !s.shutdownTimer.Stop() {
 			<-s.shutdownTimer.C
 		}
