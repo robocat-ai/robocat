@@ -225,7 +225,6 @@ func (s *Server) listenForCommands(
 			return
 		default:
 			s.readCommand(c, ctx, cancel)
-			time.Sleep(time.Second)
 		}
 	}
 }
