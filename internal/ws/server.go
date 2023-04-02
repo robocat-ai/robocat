@@ -5,9 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"time"
 
 	"nhooyr.io/websocket"
 )
+
+type ServerContext struct {
+	session struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+	}
+	connection struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+	}
+}
 
 type Server struct {
 	Username string
@@ -15,16 +28,26 @@ type Server struct {
 
 	state ServerState
 
-	updates  chan *Message
-	commands chan *Message
+	updates chan *Message
 
 	registeredCallbacks map[string]CommandCallback
+
+	ctx ServerContext
+
+	shutdownTimeout time.Duration
+	shutdownTimer   *time.Timer
 }
 
 func NewServer() *Server {
 	server := &Server{
 		registeredCallbacks: make(map[string]CommandCallback),
 	}
+
+	duration, err := time.ParseDuration("1s")
+	if err != nil {
+		duration = time.Second
+	}
+	server.shutdownTimeout = duration
 
 	return server
 }
@@ -51,19 +74,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("Got incoming connection")
 
-	if s.state.active {
-		log.Debug("There is already an active connection - request rejected")
+	if !s.authenticateRequest(r) {
+		log.Debug("Unable to authenticate - request rejected")
 
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnauthorized)
 		r.Close = true
 
 		return
 	}
 
-	if !s.authenticateRequest(r) {
-		log.Debug("Unable to authenticate - request rejected")
+	session := r.URL.Query().Get("session")
+	if s.state.active && session != s.state.session {
+		log.Debug("Invalid session token - request rejected")
 
-		w.WriteHeader(http.StatusUnauthorized)
+		w.WriteHeader(http.StatusForbidden)
 		r.Close = true
 
 		return
@@ -84,20 +108,67 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
+	if s.shutdownTimer != nil {
+		log.Debug("Stopping session shutdown timer...")
+		if !s.shutdownTimer.Stop() {
+			<-s.shutdownTimer.C
+		}
+		log.Info("Session shutdown aborted")
+	}
 
-	s.state.initialize()
-	defer s.state.reset()
+	if !s.state.active {
+		log.Info("Starting a new session")
+		s.ctx.session.ctx, s.ctx.session.cancel = context.WithCancel(context.Background())
+	} else {
+		log.Info("Recovering previous session")
+	}
 
-	go s.listenForCommands(c, ctx, cancel)
-	go s.listenForUpdates(c, ctx)
+	s.ctx.connection.ctx, s.ctx.connection.cancel = context.WithCancel(s.ctx.session.ctx)
 
-	<-ctx.Done()
+	if !s.state.active {
+		s.state.initialize()
+		s.updates = make(chan *Message)
+
+		err = s.sendSessionToken(c, s.ctx.connection.ctx)
+		if err != nil {
+			log.Warn(err)
+		}
+	}
+
+	go s.listenForUpdates(c)
+	s.listenForCommands(c, s.ctx)
 
 	c.Close(websocket.StatusNormalClosure, "")
 
 	log.Info("Connection closed")
+
+	s.shutdownTimeout, err = time.ParseDuration(os.Getenv("SESSION_TIMEOUT"))
+	if err != nil {
+		s.shutdownTimeout = time.Minute
+	}
+
+	if s.ctx.session.ctx.Err() == nil {
+		log.Infof("Session is still active - shutting down in %s", s.shutdownTimeout)
+		s.shutdownTimer = time.AfterFunc(s.shutdownTimeout, func() {
+			s.ctx.session.cancel()
+			s.state.reset()
+			log.Info("Session shutdown successfully")
+		})
+	}
+}
+
+func (s *Server) sendSessionToken(
+	c *websocket.Conn,
+	ctx context.Context,
+) error {
+	msg, err := NewMessageWithBody("session", s.state.session)
+	if err != nil {
+		return err
+	}
+
+	msg.Type = Update
+
+	return c.Write(ctx, websocket.MessageText, msg.MustBytes())
 }
 
 func (s *Server) ConnectionEstablished() bool {
@@ -111,8 +182,12 @@ func (s *Server) sendUpdate(update *Message) error {
 	}
 
 	if s.updates != nil {
-		s.updates <- update
-		return nil
+		select {
+		case <-s.ctx.session.ctx.Done():
+			return s.ctx.session.ctx.Err()
+		case s.updates <- update:
+			return nil
+		}
 	}
 
 	return errors.New("update channel has not been initialized")
@@ -149,19 +224,16 @@ func (s *Server) processCommand(ctx context.Context, message *Message) error {
 
 func (s *Server) readCommand(
 	c *websocket.Conn,
-	ctx context.Context,
-	cancel context.CancelFunc,
+	ctx ServerContext,
 ) {
-	typ, bytes, err := c.Read(ctx)
+	typ, bytes, err := c.Read(ctx.session.ctx)
 	status := websocket.CloseStatus(err)
 
 	if status != -1 {
 		log.Debugw("Got close request", "status", status.String())
-		cancel()
-		return
-	} else if !s.ConnectionEstablished() {
-		log.Debug("Read message while connection was not established")
-		cancel()
+		log.Debug("Closing session")
+		ctx.session.cancel()
+		s.state.reset()
 		return
 	} else if err != nil {
 		log.Debugw(
@@ -169,7 +241,8 @@ func (s *Server) readCommand(
 			"error", err,
 			"message", string(bytes),
 		)
-		cancel()
+		log.Debug("Closing connection")
+		ctx.connection.cancel()
 		return
 	} else {
 		if typ != websocket.MessageText {
@@ -178,7 +251,7 @@ func (s *Server) readCommand(
 			return
 		}
 
-		log.With("command", string(bytes)).Debug("Received command")
+		log.With("message", string(bytes)).Debug("Received message")
 
 		command, err := commandFromBytes(bytes)
 		if err != nil {
@@ -193,7 +266,7 @@ func (s *Server) readCommand(
 			return
 		}
 
-		err = s.processCommand(ctx, command)
+		err = s.processCommand(ctx.session.ctx, command)
 		if err != nil {
 			log.Debugw(
 				"Got error while processing command",
@@ -208,29 +281,23 @@ func (s *Server) readCommand(
 	}
 }
 
-func (s *Server) listenForCommands(
-	c *websocket.Conn,
-	ctx context.Context,
-	cancel context.CancelFunc,
-) {
-	s.commands = make(chan *Message)
-
+func (s *Server) listenForCommands(c *websocket.Conn, ctx ServerContext) {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-ctx.session.ctx.Done():
+		case <-ctx.connection.ctx.Done():
 			return
 		default:
-			s.readCommand(c, ctx, cancel)
+			s.readCommand(c, ctx)
 		}
 	}
 }
 
-func (s *Server) listenForUpdates(c *websocket.Conn, ctx context.Context) {
-	s.updates = make(chan *Message)
-
+func (s *Server) listenForUpdates(c *websocket.Conn) {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-s.ctx.session.ctx.Done():
+		case <-s.ctx.connection.ctx.Done():
 			return
 		case update := <-s.updates:
 			if !s.ConnectionEstablished() {
@@ -247,7 +314,7 @@ func (s *Server) listenForUpdates(c *websocket.Conn, ctx context.Context) {
 				continue
 			}
 
-			err = c.Write(ctx, websocket.MessageText, bytes)
+			err = c.Write(s.ctx.connection.ctx, websocket.MessageText, bytes)
 			if err != nil {
 				log.Debugf(
 					"Got error while trying to send update '%v': %s",
