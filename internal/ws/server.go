@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"nhooyr.io/websocket"
 )
@@ -14,7 +13,7 @@ type Server struct {
 	Username string
 	Password string
 
-	active bool
+	state ServerState
 
 	updates  chan *Message
 	commands chan *Message
@@ -45,10 +44,6 @@ func (s *Server) authenticateRequest(r *http.Request) bool {
 	return true
 }
 
-func (s *Server) reset() {
-	s.active = false
-}
-
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	client := r.RemoteAddr
 
@@ -56,7 +51,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("Got incoming connection")
 
-	if s.active {
+	if s.state.active {
 		log.Debug("There is already an active connection - request rejected")
 
 		w.WriteHeader(http.StatusBadRequest)
@@ -92,10 +87,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	s.reset()
-
-	s.active = true
-	defer s.reset()
+	s.state.initialize()
+	defer s.state.reset()
 
 	go s.listenForCommands(c, ctx, cancel)
 	go s.listenForUpdates(c, ctx)
@@ -108,7 +101,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ConnectionEstablished() bool {
-	return s.active
+	return s.state.active
 }
 
 func (s *Server) sendUpdate(update *Message) error {
