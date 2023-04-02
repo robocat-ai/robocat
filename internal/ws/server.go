@@ -110,9 +110,12 @@ func (s *Server) sendUpdate(update *Message) error {
 		return err
 	}
 
-	s.updates <- update
+	if s.updates != nil {
+		s.updates <- update
+		return nil
+	}
 
-	return nil
+	return errors.New("update channel has not been initialized")
 }
 
 func (s *Server) Send(name string, body ...interface{}) error {
