@@ -53,8 +53,6 @@ func NewServer() *Server {
 }
 
 func (s *Server) authenticateRequest(r *http.Request) bool {
-	// return len(s.apiKey) > 0 && r.URL.Query().Get("key") != s.apiKey
-
 	if len(s.Username) > 0 || len(s.Password) > 0 {
 		username, password, ok := r.BasicAuth()
 		if !ok {
@@ -129,14 +127,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.state.initialize()
 		s.updates = make(chan *Message)
 
-		err = s.sendSessionToken(c, s.ctx.connection.ctx)
+		err = s.sendSessionToken(c)
 		if err != nil {
 			log.Warn(err)
 		}
 	}
 
 	go s.listenForUpdates(c)
-	s.listenForCommands(c, s.ctx)
+	s.listenForCommands(c)
 
 	c.Close(websocket.StatusNormalClosure, "")
 
@@ -145,17 +143,22 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if s.ctx.session.ctx.Err() == nil {
 		log.Infof("Session is still active - shutting down in %s", s.shutdownTimeout)
 		s.shutdownTimer = time.AfterFunc(s.shutdownTimeout, func() {
-			s.ctx.session.cancel()
-			s.state.reset()
+			s.closeSession()
 			log.Info("Session shutdown successfully")
 		})
 	}
 }
 
-func (s *Server) sendSessionToken(
-	c *websocket.Conn,
-	ctx context.Context,
-) error {
+func (s *Server) closeSession() {
+	s.ctx.session.cancel()
+	s.state.reset()
+}
+
+func (s *Server) closeConnection() {
+	s.ctx.connection.cancel()
+}
+
+func (s *Server) sendSessionToken(c *websocket.Conn) error {
 	msg, err := NewMessageWithBody("session", s.state.session)
 	if err != nil {
 		return err
@@ -163,7 +166,7 @@ func (s *Server) sendSessionToken(
 
 	msg.Type = Update
 
-	return c.Write(ctx, websocket.MessageText, msg.MustBytes())
+	return c.Write(s.ctx.connection.ctx, websocket.MessageText, msg.MustBytes())
 }
 
 func (s *Server) ConnectionEstablished() bool {
@@ -205,30 +208,26 @@ func (s *Server) SendErrorf(format string, a ...any) error {
 	return s.SendError(fmt.Errorf(format, a...))
 }
 
-func (s *Server) processCommand(ctx context.Context, message *Message) error {
+func (s *Server) processCommand(message *Message) error {
 	message.server = s
 
 	if message.Name == "ping" {
 		return message.Reply("pong")
 	} else {
-		s.broadcastEvent(ctx, message.Name, message)
+		s.broadcastEvent(s.ctx.session.ctx, message.Name, message)
 	}
 
 	return nil
 }
 
-func (s *Server) readCommand(
-	c *websocket.Conn,
-	ctx ServerContext,
-) {
-	typ, bytes, err := c.Read(ctx.session.ctx)
+func (s *Server) readCommand(c *websocket.Conn) {
+	typ, bytes, err := c.Read(s.ctx.session.ctx)
 	status := websocket.CloseStatus(err)
 
 	if status != -1 {
 		log.Debugw("Got close request", "status", status.String())
 		log.Debug("Closing session")
-		ctx.session.cancel()
-		s.state.reset()
+		s.closeSession()
 		return
 	} else if err != nil {
 		log.Debugw(
@@ -237,7 +236,7 @@ func (s *Server) readCommand(
 			"message", string(bytes),
 		)
 		log.Debug("Closing connection")
-		ctx.connection.cancel()
+		s.closeConnection()
 		return
 	} else {
 		if typ != websocket.MessageText {
@@ -261,7 +260,7 @@ func (s *Server) readCommand(
 			return
 		}
 
-		err = s.processCommand(ctx.session.ctx, command)
+		err = s.processCommand(command)
 		if err != nil {
 			log.Debugw(
 				"Got error while processing command",
@@ -276,14 +275,14 @@ func (s *Server) readCommand(
 	}
 }
 
-func (s *Server) listenForCommands(c *websocket.Conn, ctx ServerContext) {
+func (s *Server) listenForCommands(c *websocket.Conn) {
 	for {
 		select {
-		case <-ctx.session.ctx.Done():
-		case <-ctx.connection.ctx.Done():
+		case <-s.ctx.session.ctx.Done():
+		case <-s.ctx.connection.ctx.Done():
 			return
 		default:
-			s.readCommand(c, ctx)
+			s.readCommand(c)
 		}
 	}
 }
