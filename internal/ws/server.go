@@ -72,6 +72,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("Got incoming connection")
 
+	// Check for HTTP basic auth using Authorization header.
 	if !s.authenticateRequest(r) {
 		log.Debug("Unable to authenticate - request rejected")
 
@@ -81,6 +82,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check session token for an already active session.
+	// If tokens do not match - reject request.
+	// The session will timeout on its own after Server.shutdownTimeout.
 	session := r.URL.Query().Get("session")
 	if s.state.active && session != s.state.session {
 		log.Debug("Invalid session token - request rejected")
@@ -106,6 +110,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// After the user has been granted access, stop session
+	// shutdown timer if one exists.
 	if s.shutdownTimer != nil {
 		log.Debug("Stopping session shutdown timer...")
 		if !s.shutdownTimer.Stop() {
@@ -114,32 +120,53 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Info("Session shutdown aborted")
 	}
 
+	// If this is the first connection - initialize session context
+	// to be passed down to the commands, otherwise do nothing.
 	if !s.state.active {
 		log.Info("Starting a new session")
-		s.ctx.session.ctx, s.ctx.session.cancel = context.WithCancel(context.Background())
+		s.ctx.session.ctx, s.ctx.session.cancel = context.WithCancel(
+			context.Background(),
+		)
 	} else {
 		log.Info("Recovering previous session")
 	}
 
-	s.ctx.connection.ctx, s.ctx.connection.cancel = context.WithCancel(s.ctx.session.ctx)
+	// Initialize new connection context that is dependant on session
+	// context. Therefore, if session context is cancelled, connection
+	// context is cancelled as well.
+	s.ctx.connection.ctx, s.ctx.connection.cancel = context.WithCancel(
+		s.ctx.session.ctx,
+	)
 
+	// Now that connection context has been initialized,
+	// we can send the session token to the client and
+	// initialize server state.
 	if !s.state.active {
 		s.state.initialize()
 		s.updates = make(chan *Message)
 
 		err = s.sendSessionToken(c)
 		if err != nil {
-			log.Warn(err)
+			log.Fatal(err)
 		}
 	}
 
+	// Listen for updates and send them to the user until
+	// either session or connection context is cancelled.
 	go s.listenForUpdates(c)
+
+	// Listen for command messages from the client.
+	// If connection close request is encountered - it cancels session context.
+	// If connection is lost - it cancels connection context leaving session
+	// intact.
 	s.listenForCommands(c)
 
 	c.Close(websocket.StatusNormalClosure, "")
 
 	log.Info("Connection closed")
 
+	// If session context is not cancelled after client disconnect, then
+	// start session shutdown timer which cancels session context
 	if s.ctx.session.ctx.Err() == nil {
 		log.Infof("Session is still active - shutting down in %s", s.shutdownTimeout)
 		s.shutdownTimer = time.AfterFunc(s.shutdownTimeout, func() {
@@ -225,11 +252,15 @@ func (s *Server) readCommand(c *websocket.Conn) {
 	status := websocket.CloseStatus(err)
 
 	if status != -1 {
+		// Cancel session context if client sends close request.
 		log.Debugw("Got close request", "status", status.String())
 		log.Debug("Closing session")
 		s.closeSession()
 		return
 	} else if err != nil {
+		// Cancel connection context if client loses connection,
+		// leaving session context active and giving the client
+		// ability to reconnect and continue work.
 		log.Debugw(
 			"Got error while reading message",
 			"error", err,
