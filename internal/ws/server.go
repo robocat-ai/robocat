@@ -112,9 +112,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// shutdown timer if one exists.
 	if s.shutdownTimer != nil {
 		log.Debug("Stopping session shutdown timer")
-		if !s.shutdownTimer.Stop() {
-			<-s.shutdownTimer.C
-		}
+		s.shutdownTimer.Stop()
 		log.Info("Session shutdown aborted")
 	}
 
