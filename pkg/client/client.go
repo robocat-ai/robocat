@@ -2,7 +2,6 @@ package robocat
 
 import (
 	"context"
-	"log"
 	"net/url"
 	"time"
 
@@ -19,9 +18,19 @@ type ClientOptions struct {
 	ReconnectAttempts int // Default is zero, which means reconnects are disabled.
 }
 
+type ClientContext struct {
+	session struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+	}
+	connection struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+	}
+}
+
 type Client struct {
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	ctx ClientContext
 
 	logger *Logger
 
@@ -42,11 +51,14 @@ type Client struct {
 }
 
 func makeClient(opts ClientOptions) *Client {
+
 	client := &Client{
 		registeredCallbacks:  make(map[string][]UpdateCallback),
 		cancelFlow:           make(chan struct{}),
 		maxReconnectAttempts: opts.ReconnectAttempts,
 	}
+
+	client.ctx.session.ctx, client.ctx.session.cancel = context.WithCancel(context.Background())
 
 	client.resetExponentialBackoffDelay()
 
@@ -71,16 +83,28 @@ func Connect(u string, opts ...ClientOptions) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) Close() error {
+func (c *Client) closeSession() {
+	c.closeConnection()
+	c.ctx.session.cancel()
+}
+
+func (c *Client) closeConnection() error {
+	var err error
 	if c.conn != nil {
 		// We need to properly close the connection,
 		// so the previous session gets closed properly.
-		err := c.conn.Close(websocket.StatusNormalClosure, "")
-		c.ctxCancel()
-		return err
+		err = c.conn.Close(websocket.StatusNormalClosure, "")
 	}
 
-	return nil
+	if c.ctx.connection.cancel != nil {
+		c.ctx.connection.cancel()
+	}
+
+	return err
+}
+
+func (c *Client) Close() error {
+	return c.closeConnection()
 }
 
 func (c *Client) setCredentials(credentials Credentials) {
@@ -102,10 +126,10 @@ func (c *Client) connect(u string, credentials ...Credentials) (err error) {
 	c.Close()
 
 	// Create new client context that is closed upon calling Client.Close().
-	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
+	c.ctx.connection.ctx, c.ctx.connection.cancel = context.WithCancel(c.ctx.session.ctx)
 
 	conn, _, err := websocket.Dial(
-		c.ctx,
+		c.ctx.connection.ctx,
 		c.url.String(),
 		&websocket.DialOptions{
 			Subprotocols: []string{"robocat"},
@@ -147,9 +171,9 @@ func (c *Client) resetExponentialBackoffDelay() {
 }
 
 func (c *Client) exponentialBackoffDelay() time.Duration {
-	// if c.reconnectBackoffDelay <= time.Minute {
-	c.exponentialBackoffDelayDuration = 2 * c.exponentialBackoffDelayDuration
-	// }
+	if c.exponentialBackoffDelayDuration <= time.Minute {
+		c.exponentialBackoffDelayDuration = 2 * c.exponentialBackoffDelayDuration
+	}
 
 	return c.exponentialBackoffDelayDuration
 }
@@ -157,8 +181,11 @@ func (c *Client) exponentialBackoffDelay() time.Duration {
 func (c *Client) listenForUpdates() {
 	for {
 		select {
-		case <-c.ctx.Done():
-			c.logDebugf("Context cancelled - stopping listening")
+		case <-c.ctx.session.ctx.Done():
+			c.logDebugf("Session context cancelled - stopping listening")
+			return
+		case <-c.ctx.connection.ctx.Done():
+			c.logDebugf("Connection context cancelled - stopping listening")
 			return
 		default:
 			message, err := c.readUpdate()
@@ -166,18 +193,18 @@ func (c *Client) listenForUpdates() {
 
 			if status != -1 {
 				c.logDebugf("WebWocket is closed (%s) - closing connection", status.String())
-				c.ctxCancel()
+				c.closeSession()
 				return
 			} else if err != nil {
 				c.logErrorf("Got error while reading message: %v", err)
 				delay := c.exponentialBackoffDelay()
 				if c.maxReconnectAttempts == 0 {
 					c.logDebugf("No reconnects - closing connection")
-					c.Close()
+					c.closeSession()
 					return
 				} else if c.reconnectAttempts >= c.maxReconnectAttempts {
 					c.logDebugf("Maximum number of reconnects reached - closing connection")
-					c.Close()
+					c.closeSession()
 					return
 				}
 
@@ -199,7 +226,7 @@ func (c *Client) listenForUpdates() {
 			}
 
 			c.resetExponentialBackoffDelay()
-			c.broadcastEvent(c.ctx, message)
+			c.broadcastEvent(c.ctx.connection.ctx, message)
 		}
 	}
 }

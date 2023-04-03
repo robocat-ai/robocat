@@ -52,7 +52,7 @@ func (chain *FlowCommandChain) Run() *RobocatFlow {
 		return flow
 	}
 
-	ctx, cancel := context.WithTimeout(chain.client.ctx, chain.timeout)
+	ctx, cancel := context.WithTimeout(chain.client.ctx.session.ctx, chain.timeout)
 
 	flow.ref = ref
 	flow.ctx = ctx
