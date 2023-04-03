@@ -199,3 +199,14 @@ func (s *Server) sendSessionToken(c *websocket.Conn) error {
 func (s *Server) ConnectionEstablished() bool {
 	return s.state.active
 }
+
+// Close currently running session and disconnect the client.
+func (s *Server) Close() {
+	s.closeSession()
+}
+
+// Drop client connection without closing currently running session.
+// Mainly used for client reconnect testing.
+func (s *Server) Drop() {
+	s.closeConnection()
+}
