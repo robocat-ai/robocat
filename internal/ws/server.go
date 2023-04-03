@@ -173,12 +173,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) closeSession() {
-	s.ctx.session.cancel()
+	if s.ctx.session.cancel != nil {
+		s.ctx.session.cancel()
+	}
 	s.state.reset()
 }
 
 func (s *Server) closeConnection() {
-	s.ctx.connection.cancel()
+	if s.ctx.connection.cancel != nil {
+		s.ctx.connection.cancel()
+	}
 }
 
 func (s *Server) sendSessionToken(c *websocket.Conn) error {
