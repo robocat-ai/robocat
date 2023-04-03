@@ -123,6 +123,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to the server: %s", err)
 	}
 
+	log.Printf("Started robocat on: %s", wsServerAddress)
+
 	code := m.Run()
 
 	os.Exit(code)
