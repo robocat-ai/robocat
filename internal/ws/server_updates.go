@@ -11,6 +11,7 @@ func (s *Server) listenForUpdates(c *websocket.Conn) {
 	for {
 		select {
 		case <-s.ctx.session.ctx.Done():
+			return
 		case <-s.ctx.connection.ctx.Done():
 			return
 		case update := <-s.updates:

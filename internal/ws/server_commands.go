@@ -10,6 +10,7 @@ func (s *Server) listenForCommands(c *websocket.Conn) {
 	for {
 		select {
 		case <-s.ctx.session.ctx.Done():
+			return
 		case <-s.ctx.connection.ctx.Done():
 			return
 		default:
