@@ -162,17 +162,13 @@ func (c *Client) listenForUpdates() {
 			return
 		default:
 			message, err := c.readUpdate()
+			status := websocket.CloseStatus(err)
 
-			if err != nil {
-				// if strings.Contains(err.Error(), "WebSocket closed") {
-				// 	// Cancel session context if websocket closes.
-				// 	status := websocket.CloseStatus(err)
-				// 	c.logDebugf("WebWocket is closed (%s)", status.String())
-				// 	c.logDebugf("Closing connection")
-				// 	c.Close()
-				// 	return
-				// }
-
+			if status != -1 {
+				c.logDebugf("WebWocket is closed (%s) - closing connection", status.String())
+				c.ctxCancel()
+				return
+			} else if err != nil {
 				c.logErrorf("Got error while reading message: %v", err)
 				delay := c.exponentialBackoffDelay()
 				if c.maxReconnectAttempts == 0 {
