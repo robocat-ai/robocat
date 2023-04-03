@@ -3,6 +3,7 @@ package robocat
 import (
 	"context"
 	"net/url"
+	"strings"
 	"time"
 
 	"nhooyr.io/websocket"
@@ -198,7 +199,10 @@ func (c *Client) listenForUpdates() {
 			} else if err != nil {
 				c.logErrorf("Got error while reading message: %v", err)
 				delay := c.exponentialBackoffDelay()
-				if c.maxReconnectAttempts == 0 {
+				if strings.Contains(err.Error(), "WebSocket closed") {
+					c.logDebugf("WebSocket closed - closing connection")
+					c.closeSession()
+				} else if c.maxReconnectAttempts == 0 {
 					c.logDebugf("No reconnects - closing connection")
 					c.closeSession()
 					return
@@ -210,7 +214,7 @@ func (c *Client) listenForUpdates() {
 
 				c.logDebugf("Trying to reconnect in %s...", delay)
 				time.Sleep(delay)
-                c.reconnectAttempts++
+				c.reconnectAttempts++
 
 				c.err = c.connect(c.url.String())
 				if c.err != nil {
