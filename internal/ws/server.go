@@ -67,8 +67,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	client := r.RemoteAddr
 
 	log := log.With("client", client)
+	session := r.URL.Query().Get("session")
 
-	log.Info("Got incoming connection")
+	log.Infow("Got incoming connection", "session", session)
 
 	// Check for HTTP basic auth using Authorization header.
 	if !s.authenticateRequest(r) {
@@ -83,7 +84,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Check session token for an already active session.
 	// If tokens do not match - reject request.
 	// The session will timeout on its own after Server.shutdownTimeout.
-	session := r.URL.Query().Get("session")
 	if s.state.active && session != s.state.session {
 		log.Debug("Invalid session token - request rejected")
 
@@ -119,12 +119,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// If this is the first connection - initialize session context
 	// to be passed down to the commands, otherwise do nothing.
 	if !s.state.active {
-		log.Info("Starting a new session")
 		s.ctx.session.ctx, s.ctx.session.cancel = context.WithCancel(
 			context.Background(),
 		)
 	} else {
-		log.Info("Recovering previous session")
+		log.Infow("Recovering previous session", "session", s.state.session)
 	}
 
 	// Initialize new connection context that is dependant on session
@@ -140,6 +139,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !s.state.active {
 		s.state.initialize()
 		s.updates = make(chan *Message)
+
+		log.Infow("Starting a new session", "session", s.state.session)
 
 		err = s.sendSessionToken(c)
 		if err != nil {
