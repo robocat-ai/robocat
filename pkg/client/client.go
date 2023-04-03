@@ -13,8 +13,8 @@ import (
 )
 
 type Logger struct {
-	Debug func(args ...any)
-	Error func(args ...any)
+	Debugf func(format string, v ...any)
+	Errorf func(format string, v ...any)
 }
 
 type Client struct {
@@ -111,15 +111,15 @@ func (c *Client) Close() error {
 	return nil
 }
 
-func (c *Client) logDebug(args ...any) {
-	if c.logger != nil && c.logger.Debug != nil {
-		c.logger.Debug(args...)
+func (c *Client) logDebugf(format string, v ...any) {
+	if c.logger != nil && c.logger.Debugf != nil {
+		c.logger.Debugf(format, v...)
 	}
 }
 
-func (c *Client) logError(args ...any) {
-	if c.logger != nil && c.logger.Error != nil {
-		c.logger.Error(args...)
+func (c *Client) logErrorf(format string, v ...any) {
+	if c.logger != nil && c.logger.Errorf != nil {
+		c.logger.Errorf(format, v...)
 	}
 }
 
