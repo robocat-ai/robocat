@@ -90,6 +90,7 @@ func (r *RobocatRunner) watchOutputPath(
 				return err
 			}
 		case <-ctx.Done():
+			return nil
 		case <-w.Closed:
 			return nil
 		}
