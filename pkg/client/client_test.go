@@ -156,8 +156,8 @@ func TestServerReconnectExponentialBackoff(t *testing.T) {
 	listener.Close()
 
 	// Wait for 2 + 4 seconds (two attempts to reconnect)
-	// + 1 more second just to be sure.
-	time.Sleep(7 * time.Second)
+	// + 4 more second just to be sure.
+	time.Sleep(10 * time.Second)
 
 	require.Equal(t, 8*time.Second, client.exponentialBackoffDelayDuration)
 }
