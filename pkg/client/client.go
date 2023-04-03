@@ -158,7 +158,7 @@ func (c *Client) listenForUpdates() {
 	for {
 		select {
 		case <-c.ctx.Done():
-			log.Println("Context cancelled - stopping listening")
+			c.logDebugf("Context cancelled - stopping listening")
 			return
 		default:
 			message, err := c.readUpdate()
