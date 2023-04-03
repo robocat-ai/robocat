@@ -53,7 +53,7 @@ func TestMain(m *testing.M) {
 			ExposedPorts: []string{"80/tcp", "6060/tcp"},
 			Env: []string{
 				"DEBUG=1",
-				"SESSION_TIMEOUT=5s",
+				"SESSION_TIMEOUT=3s",
 				"ROBOCAT_ARGS=-profile",
 				fmt.Sprintf("AUTH_USERNAME=%s", wsServerUsername),
 				fmt.Sprintf("AUTH_PASSWORD=%s", wsServerPassword),

@@ -15,7 +15,8 @@ import (
 )
 
 func newTestClient(t *testing.T) *Client {
-	time.Sleep(3 * time.Second)
+    // Wait for session timeout to expire
+	time.Sleep(4 * time.Second)
 
 	client, err := Connect(fmt.Sprintf("ws://%s", wsServerAddress), ClientOptions{
 		Credentials: Credentials{
