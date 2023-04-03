@@ -110,8 +110,11 @@ func TestMain(m *testing.M) {
 		log.Printf("Trying to connect to %s...", wsServerAddress)
 
 		client, err := Connect(
-			fmt.Sprintf("ws://%s", wsServerAddress), Credentials{
-				wsServerUsername, wsServerPassword,
+			fmt.Sprintf("ws://%s", wsServerAddress), ClientOptions{
+				Credentials: Credentials{
+					wsServerUsername, wsServerPassword,
+				},
+				ReconnectAttempts: 0,
 			},
 		)
 		if err != nil {
