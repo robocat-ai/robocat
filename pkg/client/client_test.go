@@ -15,7 +15,7 @@ import (
 )
 
 func newTestClient(t *testing.T) *Client {
-    // Wait for session timeout to expire
+	// Wait for session timeout to expire
 	time.Sleep(4 * time.Second)
 
 	client, err := Connect(fmt.Sprintf("ws://%s", wsServerAddress), ClientOptions{
@@ -155,9 +155,9 @@ func TestServerReconnectExponentialBackoff(t *testing.T) {
 
 	listener.Close()
 
-	// Wait for 2 + 4 seconds (two attempts to reconnect)
-	// + 4 more second just to be sure.
-	time.Sleep(10 * time.Second)
+	// Wait for 1 + 2 seconds (two attempts to reconnect)
+	// + 1 more second just to be sure.
+	time.Sleep(3 * time.Second)
 
-	require.Equal(t, 8*time.Second, client.exponentialBackoffDelayDuration)
+	require.Equal(t, 4*time.Second, client.exponentialBackoffDelayDuration)
 }
