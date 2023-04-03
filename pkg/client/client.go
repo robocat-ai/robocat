@@ -183,6 +183,7 @@ func (c *Client) listenForUpdates() {
 
 				c.logDebugf("Trying to reconnect in %s...", delay)
 				time.Sleep(delay)
+                c.reconnectAttempts++
 
 				c.err = c.connect(c.url.String())
 				if c.err != nil {
