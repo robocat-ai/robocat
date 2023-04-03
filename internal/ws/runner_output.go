@@ -48,11 +48,11 @@ func (r *RobocatRunner) watchOutputPath(
 	for {
 		select {
 		case event := <-w.Event:
+			log.Debugw("Got output path update", "path", event.Path, "ref", message.Ref)
+
 			if event.IsDir() {
 				continue
 			}
-
-			log.Debugw("Got output update", "path", event.Path, "ref", message.Ref)
 
 			path, err := filepath.Rel(outputBasePath, event.Path)
 			if err != nil {
@@ -90,6 +90,7 @@ func (r *RobocatRunner) watchOutputPath(
 				return err
 			}
 		case <-ctx.Done():
+			return nil
 		case <-w.Closed:
 			return nil
 		}
