@@ -203,16 +203,16 @@ func (c *Client) listenForUpdates() {
 					c.logDebugf("WebSocket closed - closing connection")
 					c.closeSession()
 				} else if c.maxReconnectAttempts == 0 {
-					c.logDebugf("No reconnects - closing connection")
+					c.logErrorf("No reconnects - closing connection")
 					c.closeSession()
 					return
 				} else if c.reconnectAttempts >= c.maxReconnectAttempts {
-					c.logDebugf("Maximum number of reconnects reached - closing connection")
+					c.logErrorf("Maximum number of reconnects reached - closing connection")
 					c.closeSession()
 					return
 				}
 
-				c.logDebugf("Trying to reconnect in %s...", delay)
+				c.logErrorf("Trying to reconnect in %s...", delay)
 				time.Sleep(delay)
 				c.reconnectAttempts++
 
