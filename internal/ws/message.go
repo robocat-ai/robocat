@@ -31,6 +31,15 @@ func (m *Message) Bytes() ([]byte, error) {
 	return bytes, nil
 }
 
+func (m *Message) MustBytes() []byte {
+	bytes, err := m.Bytes()
+	if err != nil {
+		return []byte{}
+	}
+
+	return bytes
+}
+
 func (m *Message) Text() (string, error) {
 	var text *string
 	err := json.Unmarshal(m.Body, &text)

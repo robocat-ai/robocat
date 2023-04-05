@@ -50,9 +50,11 @@ func TestMain(m *testing.M) {
 	if container == nil {
 		runOptions := &dockertest.RunOptions{
 			Name:         "robocat-test",
-			ExposedPorts: []string{"80/tcp"},
+			ExposedPorts: []string{"80/tcp", "6060/tcp"},
 			Env: []string{
 				"DEBUG=1",
+				"SESSION_TIMEOUT=3s",
+				"ROBOCAT_ARGS=-profile",
 				fmt.Sprintf("AUTH_USERNAME=%s", wsServerUsername),
 				fmt.Sprintf("AUTH_PASSWORD=%s", wsServerPassword),
 			},
@@ -108,8 +110,11 @@ func TestMain(m *testing.M) {
 		log.Printf("Trying to connect to %s...", wsServerAddress)
 
 		client, err := Connect(
-			fmt.Sprintf("ws://%s", wsServerAddress), Credentials{
-				wsServerUsername, wsServerPassword,
+			fmt.Sprintf("ws://%s", wsServerAddress), ClientOptions{
+				Credentials: Credentials{
+					wsServerUsername, wsServerPassword,
+				},
+				ReconnectAttempts: 0,
 			},
 		)
 		if err != nil {
@@ -121,6 +126,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to the server: %s", err)
 	}
 
+	log.Printf("Started robocat on: %s", wsServerAddress)
+
 	code := m.Run()
 
 	os.Exit(code)
@@ -128,7 +135,7 @@ func TestMain(m *testing.M) {
 
 func setClientLogger(client *Client, t *testing.T) {
 	client.SetLogger(&Logger{
-		Debug: t.Log,
-		Error: t.Log,
+		Debugf: t.Logf,
+		Errorf: t.Logf,
 	})
 }

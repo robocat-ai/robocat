@@ -1,7 +1,10 @@
 package ws
 
+import "github.com/oklog/ulid/v2"
+
 type ServerState struct {
-	active bool
+	active  bool
+	session string
 }
 
 func (s *ServerState) reset() {
@@ -11,4 +14,5 @@ func (s *ServerState) reset() {
 func (s *ServerState) initialize() {
 	s.reset()
 	s.active = true
+	s.session = ulid.Make().String()
 }

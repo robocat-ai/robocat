@@ -2,24 +2,36 @@ package robocat
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"log"
 	"net/url"
-	"os"
+	"strings"
+	"time"
 
-	"github.com/docker/go-units"
 	"nhooyr.io/websocket"
 )
 
 type Logger struct {
-	Debug func(args ...any)
-	Error func(args ...any)
+	Debugf func(format string, v ...any)
+	Errorf func(format string, v ...any)
+}
+
+type ClientOptions struct {
+	Credentials       Credentials
+	ReconnectAttempts int // Default is zero, which means reconnects are disabled.
+}
+
+type ClientContext struct {
+	session struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+	}
+	connection struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+	}
 }
 
 type Client struct {
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	ctx ClientContext
 
 	logger *Logger
 
@@ -31,56 +43,40 @@ type Client struct {
 	cancelFlow chan struct{}
 
 	input *RobocatInput
+
+	url *url.URL
+
+	reconnectAttempts               int
+	maxReconnectAttempts            int
+	exponentialBackoffDelayDuration time.Duration
 }
 
-func makeClient() *Client {
-	ctx, cancel := context.WithCancel(context.Background())
+func makeClient(opts ClientOptions) *Client {
 
 	client := &Client{
-		ctx:       ctx,
-		ctxCancel: cancel,
-
-		registeredCallbacks: make(map[string][]UpdateCallback),
-
-		cancelFlow: make(chan struct{}),
+		registeredCallbacks:  make(map[string][]UpdateCallback),
+		cancelFlow:           make(chan struct{}),
+		maxReconnectAttempts: opts.ReconnectAttempts,
 	}
+
+	client.ctx.session.ctx, client.ctx.session.cancel = context.WithCancel(context.Background())
+
+	client.resetExponentialBackoffDelay()
 
 	return client
 }
 
-func Connect(u string, credentials ...Credentials) (*Client, error) {
-	client := makeClient()
+func Connect(u string, opts ...ClientOptions) (*Client, error) {
+	var options ClientOptions
+	if len(opts) > 0 {
+		options = opts[0]
+	}
 
-	url, err := url.Parse(u)
+	client := makeClient(options)
+
+	err := client.connect(u, options.Credentials)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(credentials) > 0 {
-		url.User = credentials[0].GetUserInfo()
-	}
-
-	conn, _, err := websocket.Dial(
-		client.ctx,
-		url.String(),
-		&websocket.DialOptions{
-			Subprotocols: []string{"robocat"},
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	client.conn = conn
-
-	maxReadSize := os.Getenv("MAX_READ_SIZE")
-	if maxReadSize == "" {
-		maxReadSize = "1M"
-	}
-
-	err = client.SetSizeLimit(maxReadSize)
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	go client.listenForUpdates()
@@ -88,38 +84,82 @@ func Connect(u string, credentials ...Credentials) (*Client, error) {
 	return client, nil
 }
 
-// Nax number of bytes to read for a single message.
-// Limit must be in human-readable format (i.e. 10M, 50KB, etc) - for more
-// details refer to https://pkg.go.dev/github.com/docker/go-units@v0.5.0#section-documentation
-func (c *Client) SetSizeLimit(limit string) error {
-	size, err := units.FromHumanSize(limit)
+func (c *Client) closeSession() {
+	c.closeConnection()
+	c.ctx.session.cancel()
+}
+
+func (c *Client) closeConnection() error {
+	var err error
+	if c.conn != nil {
+		// We need to properly close the connection,
+		// so the previous session gets closed properly.
+		err = c.conn.Close(websocket.StatusNormalClosure, "")
+	}
+
+	if c.ctx.connection.cancel != nil {
+		c.ctx.connection.cancel()
+	}
+
+	return err
+}
+
+func (c *Client) Close() error {
+	return c.closeConnection()
+}
+
+func (c *Client) setCredentials(credentials Credentials) {
+	c.url.User = credentials.GetUserInfo()
+}
+
+func (c *Client) connect(u string, credentials ...Credentials) (err error) {
+	// Store connection URL to use later during automatic reconnects.
+	c.url, err = url.Parse(u)
 	if err != nil {
 		return err
 	}
 
-	c.conn.SetReadLimit(size)
+	if len(credentials) > 0 {
+		c.setCredentials(credentials[0])
+	}
+
+	// Close previously open connection, if any.
+	c.Close()
+
+	// Create new client context that is closed upon calling Client.Close().
+	c.ctx.connection.ctx, c.ctx.connection.cancel = context.WithCancel(c.ctx.session.ctx)
+
+	conn, _, err := websocket.Dial(
+		c.ctx.connection.ctx,
+		c.url.String(),
+		&websocket.DialOptions{
+			Subprotocols: []string{"robocat"},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Set read limit to an incredibly high amount, since in
+	// next version of websocket library the limit will be removed
+	// by default: https://github.com/nhooyr/websocket/pull/256/commits/ea87744105d79f972e58404bb46791b97fc3f314
+	const gigabyte int64 = 1024 * 1024 * 1024
+	conn.SetReadLimit(gigabyte)
+
+	c.conn = conn
 
 	return nil
 }
 
-func (c *Client) Close() error {
-	if c.conn != nil {
-		c.ctxCancel()
-		return c.conn.Close(websocket.StatusNormalClosure, "")
-	}
-
-	return nil
-}
-
-func (c *Client) logDebug(args ...any) {
-	if c.logger != nil && c.logger.Debug != nil {
-		c.logger.Debug(args...)
+func (c *Client) logDebugf(format string, v ...any) {
+	if c.logger != nil && c.logger.Debugf != nil {
+		c.logger.Debugf(format, v...)
 	}
 }
 
-func (c *Client) logError(args ...any) {
-	if c.logger != nil && c.logger.Error != nil {
-		c.logger.Error(args...)
+func (c *Client) logErrorf(format string, v ...any) {
+	if c.logger != nil && c.logger.Errorf != nil {
+		c.logger.Errorf(format, v...)
 	}
 }
 
@@ -127,24 +167,70 @@ func (c *Client) SetLogger(logger *Logger) {
 	c.logger = logger
 }
 
+func (c *Client) resetExponentialBackoffDelay() {
+	c.exponentialBackoffDelayDuration = time.Second
+}
+
+func (c *Client) exponentialBackoffDelay() time.Duration {
+	if c.exponentialBackoffDelayDuration <= time.Minute {
+		c.exponentialBackoffDelayDuration = 2 * c.exponentialBackoffDelayDuration
+	}
+
+	return c.exponentialBackoffDelayDuration
+}
+
 func (c *Client) listenForUpdates() {
 	for {
 		select {
-		case <-c.ctx.Done():
+		case <-c.ctx.session.ctx.Done():
+			c.logDebugf("Session context cancelled - stopping listening")
+			return
+		case <-c.ctx.connection.ctx.Done():
+			c.logDebugf("Connection context cancelled - stopping listening")
 			return
 		default:
 			message, err := c.readUpdate()
-			if err != nil {
-				if !errors.Is(err, context.Canceled) {
-					c.logError(fmt.Errorf("got listen error: %v", err))
+			status := websocket.CloseStatus(err)
+
+			if status != -1 {
+				c.logDebugf("WebWocket is closed (%s) - closing connection", status.String())
+				c.closeSession()
+				return
+			} else if err != nil {
+				c.logErrorf("Got error while reading message: %v", err)
+				delay := c.exponentialBackoffDelay()
+				if strings.Contains(err.Error(), "WebSocket closed") {
+					c.logDebugf("WebSocket closed - closing connection")
+					c.closeSession()
+				} else if c.maxReconnectAttempts == 0 {
+					c.logErrorf("No reconnects - closing connection")
+					c.closeSession()
+					return
+				} else if c.reconnectAttempts >= c.maxReconnectAttempts {
+					c.logErrorf("Maximum number of reconnects reached - closing connection")
+					c.closeSession()
+					return
 				}
 
-				c.err = err
-				c.Close()
+				c.logErrorf("Trying to reconnect in %s...", delay)
+				time.Sleep(delay)
+				c.reconnectAttempts++
+
+				c.err = c.connect(c.url.String())
+				if c.err != nil {
+					c.logErrorf("Got error while trying to reconnect: %v", c.err)
+				}
+
+				continue
+			} else if message.Name == "session" {
+				values := c.url.Query()
+				values.Set("session", message.MustText())
+				c.url.RawQuery = values.Encode()
 				continue
 			}
 
-			c.broadcastEvent(c.ctx, message)
+			c.resetExponentialBackoffDelay()
+			c.broadcastEvent(c.ctx.connection.ctx, message)
 		}
 	}
 }

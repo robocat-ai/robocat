@@ -27,14 +27,14 @@ func (c *Client) sendCommand(name string, body ...interface{}) (string, error) {
 		return "", err
 	}
 
-	c.logDebug("-> send:", message.Ref, message.Name, message.MustText())
+	c.logDebugf("-> send: %s %s %s", message.Ref, message.Name, message.MustText())
 
 	bytes, err := message.Bytes()
 	if err != nil {
 		return "", err
 	}
 
-	err = c.conn.Write(c.ctx, websocket.MessageText, bytes)
+	err = c.conn.Write(c.ctx.connection.ctx, websocket.MessageText, bytes)
 	if err != nil {
 		return "", err
 	}
@@ -56,7 +56,7 @@ func updateFromBytes(bytes []byte) (*ws.Message, error) {
 }
 
 func (c *Client) readUpdate() (*ws.Message, error) {
-	_, bytes, err := c.conn.Read(c.ctx)
+	_, bytes, err := c.conn.Read(c.ctx.connection.ctx)
 	if err != nil {
 		return nil, fmt.Errorf("connection error: %w", err)
 	}
